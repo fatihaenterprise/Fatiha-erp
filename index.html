@@ -1150,6 +1150,72 @@ function SearchableSelect({ value, onChange, options, placeholder = "— বে�
   );
 }
 
+// একটাই চাপে সরাসরি টাইপ করা যায় এমন সার্চ — SearchableSelect-এর মতো আগে ক্লিক করে খুলতে হয় না,
+// একটা অক্ষর টাইপ করলেই (যেমন "C" চাপলে "Color Media") নিচে সরাসরি ম্যাচিং লিস্ট দেখা যায়। ছোট, কম জায়গা নেয়।
+function InlineAutoSuggest({ value, onChange, options, placeholder = "লিখে খুঁজুন..." }) {
+  const opts = options || [];
+  const selected = opts.find((o) => o.value === value);
+  const [text, setText] = useState(selected ? selected.label : "");
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    const s = opts.find((o) => o.value === value);
+    setText(s ? s.label : value ? text : "");
+    // eslint-disable-next-line
+  }, [value]);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    document.addEventListener("touchstart", handler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("touchstart", handler);
+    };
+  }, []);
+
+  const q = text.trim().toLowerCase();
+  const filtered = q ? opts.filter((o) => o.label.toLowerCase().includes(q)) : opts;
+
+  return (
+    <div className="relative" ref={wrapRef}>
+      <input
+        className={`${inputCls} pr-7`}
+        value={text}
+        placeholder={placeholder}
+        onFocus={() => setOpen(true)}
+        onChange={(e) => {
+          setText(e.target.value);
+          setOpen(true);
+          if (value) onChange("");
+        }}
+      />
+      <Search size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-300 pointer-events-none" />
+      {open && filtered.length > 0 && (
+        <div className="absolute z-30 mt-1 w-full bg-white border border-stone-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
+          {filtered.slice(0, 30).map((o) => (
+            <div
+              key={o.value}
+              onClick={() => { onChange(o.value); setText(o.label); setOpen(false); }}
+              className={`px-3 py-2 text-sm hover:bg-amber-50 cursor-pointer ${o.value === value ? "bg-amber-50 font-semibold text-amber-800" : "text-slate-700"}`}
+            >
+              {o.label}
+            </div>
+          ))}
+        </div>
+      )}
+      {open && q && filtered.length === 0 && (
+        <div className="absolute z-30 mt-1 w-full bg-white border border-stone-200 rounded-lg shadow-lg px-3 py-2 text-xs text-stone-400">
+          কোনো ফলাফল নেই
+        </div>
+      )}
+    </div>
+  );
+}
+
 function App() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -9520,7 +9586,7 @@ function WpChallanModule({ challans, items, charges, suppliers, mills, products,
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-[11px] text-stone-500 mb-1 block">সাপ্লায়ার</label>
-              <SearchableSelect
+              <InlineAutoSuggest
                 value={header.supplierId}
                 onChange={(v) => {
                   setHeader({ ...header, supplierId: v });
@@ -9534,7 +9600,7 @@ function WpChallanModule({ challans, items, charges, suppliers, mills, products,
             </div>
             <div>
               <label className="text-[11px] text-stone-500 mb-1 block">গন্তব্য মিল</label>
-              <SearchableSelect
+              <InlineAutoSuggest
                 value={header.millId}
                 onChange={(v) => {
                   setHeader({ ...header, millId: v });
@@ -9595,10 +9661,10 @@ function WpChallanModule({ challans, items, charges, suppliers, mills, products,
               const amount = Number(row.quantityKg || 0) * Number(row.ratePerKg || 0);
               return (
                 <div key={idx} className="border border-stone-200 rounded-lg p-2 bg-stone-50">
-                  <SearchableSelect
+                  <InlineAutoSuggest
                     value={row.productId}
                     onChange={(v) => setRowProduct(idx, v)}
-                    placeholder="— প্রোডাক্ট বেছে নিন —"
+                    placeholder="প্রোডাক্ট নাম লিখুন..."
                     options={activeProducts.map((p) => ({ value: p.id, label: `${p.isPinned ? "📌 " : ""}${p.name}` }))}
                   />
                   <div className="grid grid-cols-[1fr_1fr_1fr_20px] gap-1.5 items-center mt-1.5">
