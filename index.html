@@ -157,6 +157,8 @@ const emptyData = () => ({
   wpPaperMills: [],
   wpPurchases: [],
   wpSales: [],
+  wpSaleHeaders: [],
+  wpSaleItems: [],
   wpChallans: [],
   wpChallanItems: [],
   wpChallanCharges: [],
@@ -1357,7 +1359,7 @@ function App() {
     setLoading(true);
     (async () => {
       try {
-        const [profileRowsInitial, ve, cu, vr, gp, rt, inc, exp, cc, rates, dr, tn, st, bt, du, crq, wr, fe, fep, bg, fi, fic, empAll, esp, wpSupRows, wpCustRows, wpMillRows, wpPurRows, wpSalRows, wpChalRows, wpChalItemRows, wpChalChargeRows, wpCatRows, wpUnitRows, wpProdRows, wpRateRows, wpMillLedgerRows, wpCbAccRows, wpCbTxnRows, wpSupLedgerRows, metCatRows, metUnitRows, metProdRows, metSupRows, metCustRows, metRateRows, metSupLedgerRows, metCustLedgerRows, metPurchaseRows, metSaleRows, metExpenseRows, metCashClosingRows, logVehicleRows, logDriverRows, logCustRows, logRouteRows, logTripRows, logTripExpenseRows, logFreightIncomeRows, logFreightCollectionRows, logDriverAdvanceRows, logDriverSettlementRows, logMaintenanceRows, logComponentRows, logDocumentRows, logSalaryRows, wpCustLedgerRows] = await Promise.all([
+        const [profileRowsInitial, ve, cu, vr, gp, rt, inc, exp, cc, rates, dr, tn, st, bt, du, crq, wr, fe, fep, bg, fi, fic, empAll, esp, wpSupRows, wpCustRows, wpMillRows, wpPurRows, wpSalRows, wpSaleHeaderRows, wpSaleItemRows, wpChalRows, wpChalItemRows, wpChalChargeRows, wpCatRows, wpUnitRows, wpProdRows, wpRateRows, wpMillLedgerRows, wpCbAccRows, wpCbTxnRows, wpSupLedgerRows, metCatRows, metUnitRows, metProdRows, metSupRows, metCustRows, metRateRows, metSupLedgerRows, metCustLedgerRows, metPurchaseRows, metSaleRows, metExpenseRows, metCashClosingRows, logVehicleRows, logDriverRows, logCustRows, logRouteRows, logTripRows, logTripExpenseRows, logFreightIncomeRows, logFreightCollectionRows, logDriverAdvanceRows, logDriverSettlementRows, logMaintenanceRows, logComponentRows, logDocumentRows, logSalaryRows, wpCustLedgerRows] = await Promise.all([
           sbRequest(`profiles?id=eq.${session.userId}&select=*`),
           listTable("vehicle_entries", "entry_time.desc"),
           listTable("customers", "created_at.desc"),
@@ -1387,6 +1389,8 @@ function App() {
           listTable("wp_paper_mills", "created_at.asc", "is_deleted=eq.false"),
           listTable("wp_purchases", "created_at.desc"),
           listTable("wp_sales", "created_at.desc"),
+          listTable("wp_sale_headers", "date.desc", "is_deleted=eq.false"),
+          listTable("wp_sale_items", "created_at.desc"),
           listTable("wp_challans", "created_at.desc"),
           listTable("wp_challan_items", "created_at.asc"),
           listTable("wp_challan_charges", "created_at.asc"),
@@ -1468,6 +1472,8 @@ function App() {
           wpPaperMills: wpMillRows.map(objToCamel),
           wpPurchases: wpPurRows.map(objToCamel),
           wpSales: wpSalRows.map(objToCamel),
+          wpSaleHeaders: wpSaleHeaderRows.map(objToCamel),
+          wpSaleItems: wpSaleItemRows.map(objToCamel),
           wpChallans: wpChalRows.map(objToCamel),
           wpChallanItems: wpChalItemRows.map(objToCamel),
           wpChallanCharges: wpChalChargeRows.map(objToCamel),
@@ -2661,6 +2667,25 @@ function App() {
     showToast("সেলস এন্ট্রি সংরক্ষিত হয়েছে");
   });
 
+  // মাল্টি-আইটেম সেলস — পার্চেজ চালানের মতো একটাই এন্ট্রিতে একাধিক আইটেম, header + items আলাদা টেবিলে।
+  // পুরনো addWpSale/wp_sales অক্ষত রাখা হয়েছে (পুরনো হিস্ট্রি/রিপোর্ট ভাঙবে না); নতুন এন্ট্রি এখন থেকে এখানে যায়।
+  // পুরনো সেলস লজিকে কোনো কাস্টমার-লেজার অটো-পোস্টিং ছিল না, তাই এখানেও যোগ করা হয়নি — শুধু স্ট্রাকচার
+  // মাল্টি-আইটেম করা হয়েছে, অন্য কোনো নতুন বিজনেস লজিক যোগ হয়নি।
+  const addWpSaleMulti = (header, items) => runMutation(async () => {
+    const nowStr = todayStr();
+    const [headerRow] = await insertRow("wp_sale_headers", { ...header, date: header.date || nowStr });
+    const savedHeader = objToCamel(headerRow);
+    const itemRows = await Promise.all(
+      items.map((it) => insertRow("wp_sale_items", { ...it, saleHeaderId: savedHeader.id }))
+    );
+    setData((d) => ({
+      ...d,
+      wpSaleHeaders: [savedHeader, ...d.wpSaleHeaders],
+      wpSaleItems: [...itemRows.map((r) => objToCamel(r[0])), ...d.wpSaleItems],
+    }));
+    showToast("সেলস এন্ট্রি সংরক্ষিত হয়েছে");
+  });
+
   // চালানের কাগজ-আইটেমগুলো আসল পার্চেজ ভ্যালু হিসেবে সংরক্ষিত হয়। সাপ্লায়ারের নিজের খরচ
   // (ভাড়া/লোডিং/আনলোডিং/লেবার) এখন থেকে সাপ্লায়ার লেজারে আসল ডেবিট হিসেবে বসে (রেফারেন্স-শুধু আর না) —
   // এটা কোম্পানির নিজের expense/profit না, কিন্তু সাপ্লায়ারের পাওনা কমায়। মিল বাছা থাকলে মিল-লেজারেও
@@ -3297,7 +3322,7 @@ function App() {
                 />
               )}
               {activeModule === "wpsale" && (
-                <WpSaleModule sales={data.wpSales} customers={data.wpCustomers} mills={data.wpPaperMills} products={data.wpProducts} rates={data.wpRates} onAdd={addWpSale} />
+                <WpSaleModule sales={data.wpSales} saleHeaders={data.wpSaleHeaders} saleItems={data.wpSaleItems} customers={data.wpCustomers} mills={data.wpPaperMills} products={data.wpProducts} rates={data.wpRates} onAdd={addWpSaleMulti} />
               )}
               {activeModule === "metdashboard" && (
                 <MetOwnerDashboardModule
@@ -9770,57 +9795,68 @@ function WpChallanModule({ challans, items, charges, suppliers, mills, products,
         </div>
       </form>
 
-      <div className="bg-white rounded-xl border border-stone-200 p-5">
+      <div className="bg-white rounded-xl border border-stone-200 p-4">
         <h3 className="font-bold text-slate-700 mb-3" style={{ fontFamily: "'Oswald', sans-serif" }}>সাম্প্রতিক পার্চেজ এন্ট্রি ({(challans || []).length})</h3>
-        <div className="space-y-3 max-h-[36rem] overflow-y-auto">
-          {(!challans || challans.length === 0) && <p className="text-stone-400 text-sm">কোনো চালান এন্ট্রি নেই</p>}
-          {(challans || []).slice(0, 20).map((c) => {
-            const cItems = itemsFor(c.id);
-            const cCharges = chargesFor(c.id).filter((ch) => Number(ch.amount || 0) > 0);
-            const cItemsTotal = cItems.reduce((s, it) => s + Number(it.amount || 0), 0);
-            const cChargesTotal = cCharges.reduce((s, ch) => s + Number(ch.amount || 0), 0);
-            return (
-              <div key={c.id} className="border border-stone-100 rounded-lg px-3 py-2.5">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-slate-700">{supplierName(c.supplierId)}{c.challanNo ? ` · চালান নং ${c.challanNo}` : ""}</p>
-                  <p className="text-xs text-stone-400">{c.date}</p>
-                </div>
-                <p className="text-xs text-stone-400">{millName(c.millId) && `গন্তব্য: ${millName(c.millId)} · `}{c.vehicleNumber}</p>
-                <div className="mt-1.5 space-y-0.5">
-                  {cItems.map((it) => (
-                    <p key={it.id} className="text-xs text-stone-600">{it.materialType}: {it.quantityKg}কেজি × {fmtTaka(it.ratePerKg)} = {fmtTaka(it.amount)}</p>
-                  ))}
-                </div>
-                <p className="text-xs font-semibold text-amber-700 mt-1">মোট পার্চেজ ভ্যালু: {fmtTaka(cItemsTotal)}</p>
-                {cCharges.length > 0 && (
-                  <div className="mt-1.5 pt-1.5 border-t border-rose-50">
-                    <p className="text-[11px] text-rose-500 font-semibold">সাপ্লায়ার খরচ (রেফারেন্স, কোম্পানির খরচ না): {fmtTaka(cChargesTotal)}</p>
-                    <p className="text-[11px] text-stone-400">{cCharges.map((ch) => `${ch.chargeType}: ${fmtTaka(ch.amount)}`).join(" · ")}</p>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+        {(!challans || challans.length === 0) && <p className="text-stone-400 text-sm">কোনো চালান এন্ট্রি নেই</p>}
+        {challans && challans.length > 0 && (
+          <div className="overflow-x-auto max-h-[36rem] overflow-y-auto">
+            <table className="w-full text-xs border-collapse">
+              <thead className="sticky top-0 bg-stone-50">
+                <tr className="text-[10px] text-stone-400 uppercase">
+                  <th className="text-left font-bold py-1.5 px-1.5 whitespace-nowrap">তারিখ</th>
+                  <th className="text-left font-bold py-1.5 px-1.5">সাপ্লায়ার</th>
+                  <th className="text-left font-bold py-1.5 px-1.5">আইটেম</th>
+                  <th className="text-right font-bold py-1.5 px-1.5">কেজি</th>
+                  <th className="text-right font-bold py-1.5 px-1.5">রেট</th>
+                  <th className="text-right font-bold py-1.5 px-1.5">টাকা</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(challans || []).slice(0, 30).map((c) => {
+                  const cItems = itemsFor(c.id);
+                  const cCharges = chargesFor(c.id).filter((ch) => Number(ch.amount || 0) > 0);
+                  const cChargesTotal = cCharges.reduce((s, ch) => s + Number(ch.amount || 0), 0);
+                  return (
+                    <React.Fragment key={c.id}>
+                      {cItems.map((it, i) => (
+                        <tr key={it.id} className="border-t border-stone-100">
+                          <td className="py-1.5 px-1.5 text-stone-400 whitespace-nowrap">{i === 0 ? c.date : ""}</td>
+                          <td className="py-1.5 px-1.5 text-slate-700 font-medium">
+                            {i === 0 ? (
+                              <>
+                                {supplierName(c.supplierId)}
+                                {c.challanNo ? <span className="block text-[10px] text-stone-400">#{c.challanNo}{c.vehicleNumber ? ` · ${c.vehicleNumber}` : ""}</span> : null}
+                              </>
+                            ) : ""}
+                          </td>
+                          <td className="py-1.5 px-1.5 text-slate-600">{it.materialType}</td>
+                          <td className="py-1.5 px-1.5 text-right text-stone-500" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{it.quantityKg}</td>
+                          <td className="py-1.5 px-1.5 text-right text-stone-500" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{fmtTaka(it.ratePerKg)}</td>
+                          <td className="py-1.5 px-1.5 text-right font-bold text-slate-700" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{fmtTaka(it.amount)}</td>
+                        </tr>
+                      ))}
+                      {cChargesTotal > 0 && (
+                        <tr className="bg-rose-50/40">
+                          <td></td>
+                          <td colSpan={4} className="py-1 px-1.5 text-[10px] text-rose-500">সাপ্লায়ার খরচ: {cCharges.map((ch) => `${ch.chargeType} ${fmtTaka(ch.amount)}`).join(" · ")}</td>
+                          <td className="py-1 px-1.5 text-right text-[10px] font-semibold text-rose-600" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>−{fmtTaka(cChargesTotal)}</td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function WpSaleModule({ sales, customers, mills, products, rates, onAdd }) {
-  const [form, setForm] = useState({
-    customerId: "",
-    millId: "",
-    saleType: wpSaleTypes[0],
-    productId: "",
-    quantityKg: "",
-    ratePerKg: "",
-    rateAuto: false,
-    paymentMethod: "due",
-    vehicleNumber: "",
-    note: "",
-  });
-  const amount = (Number(form.quantityKg || 0) * Number(form.ratePerKg || 0));
+function WpSaleModule({ sales, saleHeaders, saleItems, customers, mills, products, rates, onAdd }) {
+  const [header, setHeader] = useState({ customerId: "", millId: "", saleType: wpSaleTypes[0], vehicleNumber: "", paymentMethod: "due", note: "", date: todayStr() });
+  const [rows, setRows] = useState([{ productId: "", quantityKg: "", ratePerKg: "", rateAuto: false }]);
   const activeProducts = sortPinnedFirst((products || []).filter((p) => p.active !== false));
 
   const applyRateLookup = (productId, customerId) => {
@@ -9828,109 +9864,202 @@ function WpSaleModule({ sales, customers, mills, products, rates, onAdd }) {
     return found ? { ratePerKg: String(found), rateAuto: true } : { ratePerKg: "", rateAuto: false };
   };
 
+  const addRow = () => setRows((r) => [...r, { productId: "", quantityKg: "", ratePerKg: "", rateAuto: false }]);
+  const removeRow = (idx) => setRows((r) => r.filter((_, i) => i !== idx));
+  const patchRow = (idx, patch) => setRows((r) => r.map((row, i) => (i === idx ? { ...row, ...patch } : row)));
+  const setRowProduct = (idx, productId) => {
+    patchRow(idx, { productId, ...applyRateLookup(productId, header.customerId) });
+  };
+
+  const grandTotal = rows.reduce((s, r) => s + Number(r.quantityKg || 0) * Number(r.ratePerKg || 0), 0);
+
   const submit = (e) => {
     e.preventDefault();
-    if (!form.productId || !form.quantityKg || !form.ratePerKg) return;
-    const product = activeProducts.find((p) => p.id === form.productId);
-    const { rateAuto, ...formRest } = form;
-    onAdd({
-      ...formRest,
-      quantityKg: Number(form.quantityKg),
-      ratePerKg: Number(form.ratePerKg),
-      amount,
-      customerId: form.customerId || null,
-      millId: form.millId || null,
-      productId: form.productId,
-      materialType: product ? product.name : "",
-    });
-    setForm({ customerId: "", millId: "", saleType: wpSaleTypes[0], productId: "", quantityKg: "", ratePerKg: "", rateAuto: false, paymentMethod: "due", vehicleNumber: "", note: "" });
+    const validRows = rows.filter((r) => r.productId && Number(r.quantityKg || 0) > 0 && Number(r.ratePerKg || 0) > 0);
+    if (validRows.length === 0) return;
+    const itemPayload = validRows.map((r) => ({
+      productId: r.productId,
+      materialType: activeProducts.find((p) => p.id === r.productId)?.name || "",
+      quantityKg: Number(r.quantityKg),
+      ratePerKg: Number(r.ratePerKg),
+      amount: Number(r.quantityKg) * Number(r.ratePerKg),
+    }));
+    onAdd(
+      {
+        customerId: header.customerId || null, millId: header.millId || null, saleType: header.saleType,
+        vehicleNumber: header.vehicleNumber || null, paymentMethod: header.paymentMethod, note: header.note || null,
+        date: header.date || todayStr(),
+      },
+      itemPayload
+    );
+    setHeader({ customerId: "", millId: "", saleType: wpSaleTypes[0], vehicleNumber: "", paymentMethod: "due", note: "", date: todayStr() });
+    setRows([{ productId: "", quantityKg: "", ratePerKg: "", rateAuto: false }]);
   };
 
   const customerName = (id) => (customers || []).find((c) => c.id === id)?.name || "—";
 
+  // পুরনো ফ্ল্যাট wp_sales আর নতুন wp_sale_headers+items — দুটোই মিলিয়ে একটাই টাইমলাইনে দেখানো হয়,
+  // যাতে আগের হিস্ট্রি হারিয়ে না যায়।
+  const oldRows = (sales || []).map((s) => ({
+    key: `old-${s.id}`, date: s.date, customerName: customerName(s.customerId), materialType: s.materialType,
+    quantityKg: s.quantityKg, ratePerKg: s.ratePerKg, amount: s.amount, groupFirst: true,
+  }));
+  const newRows = (saleHeaders || []).flatMap((h) => {
+    const hItems = (saleItems || []).filter((it) => it.saleHeaderId === h.id);
+    return hItems.map((it, i) => ({
+      key: `new-${it.id}`, date: h.date, customerName: customerName(h.customerId), materialType: it.materialType,
+      quantityKg: it.quantityKg, ratePerKg: it.ratePerKg, amount: it.amount, groupFirst: i === 0,
+    }));
+  });
+  const combinedRows = [...oldRows, ...newRows].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 40);
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-      <FormShell title="নতুন সেলস এন্ট্রি" onSubmit={submit}>
-        <Field label="সেলসের ধরন">
-          <select className={inputCls} value={form.saleType} onChange={(e) => setForm({ ...form, saleType: e.target.value })}>
-            {wpSaleTypes.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
-        </Field>
-        <Field label="কাস্টমার">
-          <SearchableSelect
-            value={form.customerId}
-            onChange={(v) => setForm({ ...form, customerId: v, ...applyRateLookup(form.productId, v) })}
-            options={(customers || []).filter((c) => c.active !== false).map((c) => ({ value: c.id, label: c.name }))}
-          />
-        </Field>
-        <Field label="পেপার মিল (যদি প্রযোজ্য হয়)">
-          <SearchableSelect
-            value={form.millId}
-            onChange={(v) => setForm({ ...form, millId: v })}
-            placeholder="— প্রযোজ্য নয় —"
-            options={(mills || []).filter((m) => m.active !== false).map((m) => ({ value: m.id, label: m.name }))}
-          />
-        </Field>
-        <Field label="প্রোডাক্ট *">
-          <SearchableSelect
-            value={form.productId}
-            onChange={(v) => setForm({ ...form, productId: v, ...applyRateLookup(v, form.customerId) })}
-            options={activeProducts.map((p) => ({ value: p.id, label: `${p.isPinned ? "📌 " : ""}${p.name}` }))}
-            required
-          />
-          {activeProducts.length === 0 && <p className="text-[11px] text-rose-500 mt-1">আগে প্রোডাক্ট মাস্টারে প্রোডাক্ট যোগ করুন</p>}
-        </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="পরিমাণ (কেজি) *">
-            <input className={inputCls} type="number" min="0" step="any" value={form.quantityKg} onChange={(e) => setForm({ ...form, quantityKg: e.target.value })} required />
-          </Field>
-          <Field label="রেট (৳/কেজি) *">
-            <input
-              className={inputCls}
-              type="number"
-              min="0"
-              step="any"
-              value={form.ratePerKg}
-              onChange={(e) => setForm({ ...form, ratePerKg: e.target.value, rateAuto: false })}
-              required
-            />
-          </Field>
+      <form onSubmit={submit} className="bg-white rounded-xl border border-stone-200 p-4 space-y-4">
+        <h3 className="font-bold text-slate-700" style={{ fontFamily: "'Oswald', sans-serif" }}>নতুন সেলস এন্ট্রি</h3>
+
+        {/* কাস্টমার + মিল — এক লাইনে */}
+        <div>
+          <p className="text-[11px] font-bold text-stone-400 uppercase tracking-wide mb-1.5">কাস্টমার ও মিল</p>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[11px] text-stone-500 mb-1 block">কাস্টমার</label>
+              <InlineAutoSuggest
+                value={header.customerId}
+                onChange={(v) => {
+                  setHeader({ ...header, customerId: v });
+                  setRows((rs) => rs.map((r) => (r.productId ? { ...r, ...applyRateLookup(r.productId, v) } : r)));
+                }}
+                options={(customers || []).filter((c) => c.active !== false).map((c) => ({ value: c.id, label: c.name }))}
+              />
+            </div>
+            <div>
+              <label className="text-[11px] text-stone-500 mb-1 block">মিল (প্রযোজ্য হলে)</label>
+              <InlineAutoSuggest
+                value={header.millId}
+                onChange={(v) => setHeader({ ...header, millId: v })}
+                placeholder="প্রযোজ্য নয়..."
+                options={(mills || []).filter((m) => m.active !== false).map((m) => ({ value: m.id, label: m.name }))}
+              />
+            </div>
+          </div>
         </div>
-        {form.rateAuto && <p className="text-[11px] text-emerald-600 -mt-2">রেট মাস্টার থেকে স্বয়ংক্রিয়ভাবে বসানো হয়েছে — চাইলে বদলাতে পারবেন</p>}
-        {!form.rateAuto && form.productId && !form.ratePerKg && <p className="text-[11px] text-amber-600 -mt-2">এই প্রোডাক্টের জন্য রেট মাস্টারে কোনো রেট নেই — হাতে বসান</p>}
-        <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 flex items-center justify-between">
-          <span className="text-xs font-semibold text-emerald-800">মোট পরিমাণ</span>
-          <span className="text-sm font-bold text-emerald-800" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{fmtTaka(amount)}</span>
+
+        {/* তারিখ + সেলসের ধরন + ভেহিকেল — এক লাইনে */}
+        <div className="grid grid-cols-3 gap-2">
+          <div>
+            <label className="text-[11px] text-stone-500 mb-1 block">তারিখ</label>
+            <input className={`${inputCls} !text-xs !px-2`} type="date" value={header.date} onChange={(e) => setHeader({ ...header, date: e.target.value })} />
+          </div>
+          <div>
+            <label className="text-[11px] text-stone-500 mb-1 block">ধরন</label>
+            <select className={`${inputCls} !text-xs !px-2`} value={header.saleType} onChange={(e) => setHeader({ ...header, saleType: e.target.value })}>
+              {wpSaleTypes.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-[11px] text-stone-500 mb-1 block">ভেহিকেল (ঐচ্ছিক)</label>
+            <input className={`${inputCls} !text-xs !px-2`} value={header.vehicleNumber} onChange={(e) => setHeader({ ...header, vehicleNumber: e.target.value })} placeholder="নম্বর" />
+          </div>
         </div>
-        <Field label="পেমেন্ট মেথড">
-          <select className={inputCls} value={form.paymentMethod} onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}>
+
+        {/* আইটেম লেজার/গ্রিড — একাধিক আইটেম */}
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <p className="text-[11px] font-bold text-stone-400 uppercase tracking-wide">আইটেম</p>
+            <p className="text-[10px] text-stone-400">কেজি × রেট = পরিমাণ (অটো)</p>
+          </div>
+          {activeProducts.length === 0 && <p className="text-[11px] text-rose-500 mb-2">আগে প্রোডাক্ট মাস্টারে প্রোডাক্ট যোগ করুন</p>}
+          <div className="space-y-2">
+            {rows.map((row, idx) => {
+              const amount = Number(row.quantityKg || 0) * Number(row.ratePerKg || 0);
+              return (
+                <div key={idx} className="border border-stone-200 rounded-lg p-2 bg-stone-50">
+                  <InlineAutoSuggest
+                    value={row.productId}
+                    onChange={(v) => setRowProduct(idx, v)}
+                    placeholder="প্রোডাক্ট নাম লিখুন..."
+                    options={activeProducts.map((p) => ({ value: p.id, label: `${p.isPinned ? "📌 " : ""}${p.name}` }))}
+                  />
+                  <div className="grid grid-cols-[1fr_1fr_1fr_20px] gap-1.5 items-center mt-1.5">
+                    <input className={`${inputCls} !py-1.5 !px-2 !text-xs`} type="number" min="0" step="any" placeholder="কেজি" value={row.quantityKg} onChange={(e) => patchRow(idx, { quantityKg: e.target.value })} />
+                    <input className={`${inputCls} !py-1.5 !px-2 !text-xs text-right`} style={{ fontFamily: "'IBM Plex Mono', monospace" }} type="number" min="0" step="any" placeholder="রেট" value={row.ratePerKg} onChange={(e) => patchRow(idx, { ratePerKg: e.target.value, rateAuto: false })} />
+                    <div className="text-xs font-bold text-slate-700 text-right" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{fmtTaka(amount)}</div>
+                    {rows.length > 1 ? (
+                      <button type="button" onClick={() => removeRow(idx)} className="w-5 h-5 rounded bg-rose-100 text-rose-600 flex items-center justify-center">
+                        <X size={11} />
+                      </button>
+                    ) : <span></span>}
+                  </div>
+                  {row.rateAuto && <p className="text-[10px] text-emerald-600 mt-1">রেট মাস্টার থেকে অটো বসেছে — প্রয়োজনে বদলাতে পারবেন</p>}
+                </div>
+              );
+            })}
+          </div>
+          <button type="button" onClick={addRow} className="w-full text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-2 border-dashed border-emerald-300 rounded-lg py-2 flex items-center justify-center gap-1.5 mt-2">
+            <Plus size={14} /> আরেকটা সারি
+          </button>
+        </div>
+
+        <div>
+          <label className="text-[11px] text-stone-500 mb-1 block">পেমেন্ট মেথড</label>
+          <select className={`${inputCls} !text-xs`} value={header.paymentMethod} onChange={(e) => setHeader({ ...header, paymentMethod: e.target.value })}>
             {paymentMethodsWithDue.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
           </select>
-        </Field>
-        <Field label="ভেহিকেল নম্বর">
-          <input className={inputCls} value={form.vehicleNumber} onChange={(e) => setForm({ ...form, vehicleNumber: e.target.value })} />
-        </Field>
-        <Field label="নোট">
-          <input className={inputCls} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
-        </Field>
-        <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg py-2.5 flex items-center justify-center gap-2 transition-colors">
-          <Plus size={16} /> সেলস এন্ট্রি করুন
-        </button>
-      </FormShell>
-      <div className="bg-white rounded-xl border border-stone-200 p-5">
-        <h3 className="font-bold text-slate-700 mb-3" style={{ fontFamily: "'Oswald', sans-serif" }}>সাম্প্রতিক সেলস ({(sales || []).length})</h3>
-        <div className="space-y-2 max-h-[30rem] overflow-y-auto">
-          {(!sales || sales.length === 0) && <p className="text-stone-400 text-sm">কোনো সেলস এন্ট্রি নেই</p>}
-          {(sales || []).slice(0, 30).map((s) => (
-            <div key={s.id} className="border border-stone-100 rounded-lg px-3 py-2.5">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-slate-700">{s.materialType}</p>
-                <p className="text-sm font-bold text-emerald-700" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{fmtTaka(s.amount)}</p>
-              </div>
-              <p className="text-xs text-stone-400">{customerName(s.customerId)} · {s.quantityKg} কেজি × {fmtTaka(s.ratePerKg)} · {s.date}</p>
-            </div>
-          ))}
         </div>
+
+        <div>
+          <label className="text-[11px] text-stone-500 mb-1 block">নোট (ঐচ্ছিক)</label>
+          <input className={`${inputCls} !text-xs`} value={header.note} onChange={(e) => setHeader({ ...header, note: e.target.value })} />
+        </div>
+
+        {/* সামারি */}
+        <div className="bg-stone-800 text-white rounded-xl px-4 py-3">
+          <div className="flex justify-between items-baseline">
+            <span className="text-sm font-bold text-emerald-400">সর্বমোট</span>
+            <span className="text-lg font-bold text-emerald-400" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{fmtTaka(grandTotal)}</span>
+          </div>
+        </div>
+
+        {/* স্টিকি সাবমিট */}
+        <div className="sticky bottom-0 -mx-4 -mb-4 px-4 py-3 bg-white border-t border-stone-200">
+          <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg py-3 flex items-center justify-center gap-2 transition-colors">
+            <Plus size={16} /> সেলস এন্ট্রি সংরক্ষণ করো
+          </button>
+        </div>
+      </form>
+
+      <div className="bg-white rounded-xl border border-stone-200 p-4">
+        <h3 className="font-bold text-slate-700 mb-3" style={{ fontFamily: "'Oswald', sans-serif" }}>সাম্প্রতিক সেলস ({combinedRows.length})</h3>
+        {combinedRows.length === 0 && <p className="text-stone-400 text-sm">কোনো সেলস এন্ট্রি নেই</p>}
+        {combinedRows.length > 0 && (
+          <div className="overflow-x-auto max-h-[36rem] overflow-y-auto">
+            <table className="w-full text-xs border-collapse">
+              <thead className="sticky top-0 bg-stone-50">
+                <tr className="text-[10px] text-stone-400 uppercase">
+                  <th className="text-left font-bold py-1.5 px-1.5 whitespace-nowrap">তারিখ</th>
+                  <th className="text-left font-bold py-1.5 px-1.5">কাস্টমার</th>
+                  <th className="text-left font-bold py-1.5 px-1.5">আইটেম</th>
+                  <th className="text-right font-bold py-1.5 px-1.5">কেজি</th>
+                  <th className="text-right font-bold py-1.5 px-1.5">রেট</th>
+                  <th className="text-right font-bold py-1.5 px-1.5">টাকা</th>
+                </tr>
+              </thead>
+              <tbody>
+                {combinedRows.map((r) => (
+                  <tr key={r.key} className="border-t border-stone-100">
+                    <td className="py-1.5 px-1.5 text-stone-400 whitespace-nowrap">{r.groupFirst ? r.date : ""}</td>
+                    <td className="py-1.5 px-1.5 text-slate-700 font-medium">{r.groupFirst ? r.customerName : ""}</td>
+                    <td className="py-1.5 px-1.5 text-slate-600">{r.materialType}</td>
+                    <td className="py-1.5 px-1.5 text-right text-stone-500" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{r.quantityKg}</td>
+                    <td className="py-1.5 px-1.5 text-right text-stone-500" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{fmtTaka(r.ratePerKg)}</td>
+                    <td className="py-1.5 px-1.5 text-right font-bold text-emerald-700" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{fmtTaka(r.amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
