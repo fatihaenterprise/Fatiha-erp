@@ -9511,36 +9511,47 @@ function WpChallanModule({ challans, items, charges, suppliers, mills, products,
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-      <FormShell title="নতুন পার্চেজ এন্ট্রি (চালান)" onSubmit={submit}>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="সাপ্লায়ার">
-            <SearchableSelect
-              value={header.supplierId}
-              onChange={(v) => {
-                setHeader({ ...header, supplierId: v });
-                setRows((rs) => rs.map((r) => {
-                  const found = lookupWpRate(rates, r.productId, { supplierId: v }, "purchase");
-                  return found ? { ...r, ratePerKg: String(found), rateAuto: true } : r;
-                }));
-              }}
-              options={(suppliers || []).filter((s) => s.active !== false).map((s) => ({ value: s.id, label: s.name }))}
-            />
-          </Field>
-          <Field label="গন্তব্য মিল">
-            <SearchableSelect
-              value={header.millId}
-              onChange={(v) => {
-                setHeader({ ...header, millId: v });
-                setRows((rs) => rs.map((r) => (r.productId ? { ...r, ...computeRates(r.productId, v) } : r)));
-              }}
-              options={(mills || []).filter((m) => m.active !== false).map((m) => ({ value: m.id, label: m.name }))}
-            />
-          </Field>
+      <form onSubmit={submit} className="bg-white rounded-xl border border-stone-200 p-4 space-y-4">
+        <h3 className="font-bold text-slate-700" style={{ fontFamily: "'Oswald', sans-serif" }}>নতুন পার্চেজ এন্ট্রি (চালান)</h3>
+
+        {/* সাপ্লায়ার + মিল — এক লাইনে (ইনলাইন সার্চ, কোনো পপআপ না) */}
+        <div>
+          <p className="text-[11px] font-bold text-stone-400 uppercase tracking-wide mb-1.5">সাপ্লায়ার ও মিল</p>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[11px] text-stone-500 mb-1 block">সাপ্লায়ার</label>
+              <SearchableSelect
+                value={header.supplierId}
+                onChange={(v) => {
+                  setHeader({ ...header, supplierId: v });
+                  setRows((rs) => rs.map((r) => {
+                    const found = lookupWpRate(rates, r.productId, { supplierId: v }, "purchase");
+                    return found ? { ...r, ratePerKg: String(found), rateAuto: true } : r;
+                  }));
+                }}
+                options={(suppliers || []).filter((s) => s.active !== false).map((s) => ({ value: s.id, label: s.name }))}
+              />
+            </div>
+            <div>
+              <label className="text-[11px] text-stone-500 mb-1 block">গন্তব্য মিল</label>
+              <SearchableSelect
+                value={header.millId}
+                onChange={(v) => {
+                  setHeader({ ...header, millId: v });
+                  setRows((rs) => rs.map((r) => (r.productId ? { ...r, ...computeRates(r.productId, v) } : r)));
+                }}
+                options={(mills || []).filter((m) => m.active !== false).map((m) => ({ value: m.id, label: m.name }))}
+              />
+            </div>
+          </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="চালানের তারিখ">
+
+        {/* তারিখ + চালান নং + ভেহিকেল — এক লাইনে, ভেহিকেল সম্পূর্ণ ঐচ্ছিক */}
+        <div className="grid grid-cols-3 gap-2">
+          <div>
+            <label className="text-[11px] text-stone-500 mb-1 block">তারিখ</label>
             <input
-              className={inputCls}
+              className={`${inputCls} !text-xs !px-2`}
               type="date"
               value={header.date}
               onChange={(e) => {
@@ -9556,62 +9567,70 @@ function WpChallanModule({ challans, items, charges, suppliers, mills, products,
                 }));
               }}
             />
-          </Field>
-          <Field label="চালান নম্বর">
-            <input className={inputCls} value={header.challanNo} onChange={(e) => setHeader({ ...header, challanNo: e.target.value })} placeholder="যেমন: 1720" />
-          </Field>
+          </div>
+          <div>
+            <label className="text-[11px] text-stone-500 mb-1 block">চালান নং</label>
+            <input className={`${inputCls} !text-xs !px-2`} value={header.challanNo} onChange={(e) => setHeader({ ...header, challanNo: e.target.value })} placeholder="1720" />
+          </div>
+          <div>
+            <label className="text-[11px] text-stone-500 mb-1 block">ভেহিকেল (ঐচ্ছিক)</label>
+            <input className={`${inputCls} !text-xs !px-2`} value={header.vehicleNumber} onChange={(e) => setHeader({ ...header, vehicleNumber: e.target.value })} placeholder="নম্বর" />
+          </div>
         </div>
-        <Field label="ভেহিকেল নম্বর">
-          <input className={inputCls} value={header.vehicleNumber} onChange={(e) => setHeader({ ...header, vehicleNumber: e.target.value })} />
-        </Field>
 
-        <p className="text-xs font-bold text-stone-400 uppercase tracking-wide pt-2">কাগজ আইটেম (একটা চালানে একাধিক আইটেম হতে পারে)</p>
-        {activeProducts.length === 0 && <p className="text-[11px] text-rose-500">আগে প্রোডাক্ট মাস্টারে প্রোডাক্ট যোগ করুন</p>}
-        <div className="space-y-2">
-          {rows.map((row, idx) => {
-            const amount = Number(row.quantityKg || 0) * Number(row.ratePerKg || 0);
-            return (
-              <div key={idx} className="border border-stone-100 rounded-lg p-2.5 space-y-2">
-                <SearchableSelect
-                  value={row.productId}
-                  onChange={(v) => setRowProduct(idx, v)}
-                  placeholder="— প্রোডাক্ট —"
-                  options={activeProducts.map((p) => ({ value: p.id, label: `${p.isPinned ? "📌 " : ""}${p.name}` }))}
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <input className={inputCls} type="number" min="0" step="any" placeholder="কেজি" value={row.quantityKg} onChange={(e) => patchRow(idx, { quantityKg: e.target.value })} />
-                  <input className={inputCls} type="number" min="0" step="any" placeholder="সাপ্লায়ার রেট/কেজি" value={row.ratePerKg} onChange={(e) => patchRow(idx, { ratePerKg: e.target.value, rateAuto: false })} />
+        {/* আইটেম লেজার/গ্রিড — একটা চালানে একাধিক আইটেম */}
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <p className="text-[11px] font-bold text-stone-400 uppercase tracking-wide">আইটেম</p>
+            <p className="text-[10px] text-stone-400">কেজি × রেট = পরিমাণ (অটো)</p>
+          </div>
+          {activeProducts.length === 0 && <p className="text-[11px] text-rose-500 mb-2">আগে প্রোডাক্ট মাস্টারে প্রোডাক্ট যোগ করুন</p>}
+          <div className="grid grid-cols-[1fr_1fr_10px] gap-1.5 px-0.5 mb-1">
+            <span className="text-[10px] font-bold text-stone-400 uppercase">কেজি</span>
+            <span className="text-[10px] font-bold text-stone-400 uppercase text-right">রেট (সাপ্লায়ার)</span>
+            <span></span>
+          </div>
+          <div className="space-y-2">
+            {rows.map((row, idx) => {
+              const amount = Number(row.quantityKg || 0) * Number(row.ratePerKg || 0);
+              return (
+                <div key={idx} className="border border-stone-200 rounded-lg p-2 bg-stone-50">
+                  <SearchableSelect
+                    value={row.productId}
+                    onChange={(v) => setRowProduct(idx, v)}
+                    placeholder="— প্রোডাক্ট বেছে নিন —"
+                    options={activeProducts.map((p) => ({ value: p.id, label: `${p.isPinned ? "📌 " : ""}${p.name}` }))}
+                  />
+                  <div className="grid grid-cols-[1fr_1fr_1fr_20px] gap-1.5 items-center mt-1.5">
+                    <input className={`${inputCls} !py-1.5 !px-2 !text-xs`} type="number" min="0" step="any" placeholder="0" value={row.quantityKg} onChange={(e) => patchRow(idx, { quantityKg: e.target.value })} />
+                    <input className={`${inputCls} !py-1.5 !px-2 !text-xs text-right`} style={{ fontFamily: "'IBM Plex Mono', monospace" }} type="number" min="0" step="any" placeholder="0" value={row.ratePerKg} onChange={(e) => patchRow(idx, { ratePerKg: e.target.value, rateAuto: false })} />
+                    <div className="text-xs font-bold text-slate-700 text-right" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{fmtTaka(amount)}</div>
+                    {rows.length > 1 ? (
+                      <button type="button" onClick={() => removeRow(idx)} className="w-5 h-5 rounded bg-rose-100 text-rose-600 flex items-center justify-center">
+                        <X size={11} />
+                      </button>
+                    ) : <span></span>}
+                  </div>
+                  {row.rateAuto && <p className="text-[10px] text-emerald-600 mt-1">রেট মিল রেট রেজিস্টার থেকে অটো বসেছে — প্রয়োজনে বদলাতে পারবেন</p>}
                 </div>
-                {row.rateAuto && <p className="text-[11px] text-emerald-600">সাপ্লায়ার রেট মিল রেট রেজিস্টার থেকে অটো বসানো হয়েছে — প্রয়োজনে বদলে দিন</p>}
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-stone-500">এই আইটেমের মূল্য (সাপ্লায়ার): <span className="font-semibold text-slate-700">{fmtTaka(amount)}</span></span>
-                  {rows.length > 1 && (
-                    <button type="button" onClick={() => removeRow(idx)} className="text-rose-500 hover:text-rose-700">
-                      <X size={14} />
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-          <button type="button" onClick={addRow} className="w-full text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg py-2 flex items-center justify-center gap-1.5">
-            <Plus size={14} /> আরেকটা আইটেম যোগ করো
+              );
+            })}
+          </div>
+          <button type="button" onClick={addRow} className="w-full text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border-2 border-dashed border-amber-300 rounded-lg py-2 flex items-center justify-center gap-1.5 mt-2">
+            <Plus size={14} /> আরেকটা সারি
           </button>
         </div>
-        <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 flex items-center justify-between">
-          <span className="text-xs font-semibold text-amber-800">চালানের মোট পার্চেজ ভ্যালু (সাপ্লায়ার)</span>
-          <span className="text-sm font-bold text-amber-800" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{fmtTaka(itemsTotal)}</span>
-        </div>
 
-        <div className="pt-2">
-          <p className="text-xs font-bold text-rose-500 uppercase tracking-wide">সাপ্লায়ারের খরচ (এখন থেকে আসল হিসাবে যোগ হয়)</p>
-          <p className="text-[11px] text-stone-400 mb-2">এই টাকাগুলো সাপ্লায়ারের নিজের খরচ, ফাতিহার নিজের খরচ/লাভ-ক্ষতিতে যোগ হয় না — কিন্তু সাপ্লায়ারের পাওনা কমায় (ডেবিট), আর যদি নগদে পেমেন্ট করা হয় (নিচে) তাহলে সেই অ্যাকাউন্টের ক্যাশ থেকেও বিয়োগ হবে।</p>
-          <div className="grid grid-cols-2 gap-2">
+        {/* সাপ্লায়ারের খরচ — কম্প্যাক্ট */}
+        <div>
+          <p className="text-[11px] font-bold text-rose-500 uppercase tracking-wide mb-1">সাপ্লায়ারের খরচ (ঐচ্ছিক)</p>
+          <p className="text-[10px] text-stone-400 mb-1.5">সাপ্লায়ারের নিজের খরচ — সাপ্লায়ারের পাওনা কমায়, নগদে দিলে ক্যাশ থেকেও বিয়োগ হবে</p>
+          <div className="grid grid-cols-2 gap-1.5">
             {wpChargeTypes.map((t) => (
               <div key={t}>
-                <label className="text-[11px] text-stone-400">{t}</label>
+                <label className="text-[10px] text-stone-400">{t}</label>
                 <input
-                  className={inputCls}
+                  className={`${inputCls} !py-1.5 !px-2 !text-xs`}
                   type="number"
                   min="0"
                   step="any"
@@ -9621,41 +9640,69 @@ function WpChallanModule({ challans, items, charges, suppliers, mills, products,
               </div>
             ))}
           </div>
-          {chargesTotal > 0 && (
-            <p className="text-[11px] text-rose-600 mt-1.5">সাপ্লায়ার খরচের মোট: {fmtTaka(chargesTotal)} — সাপ্লায়ার লেজারে ডেবিট হবে</p>
-          )}
         </div>
 
-        <div className="pt-2 border-t border-stone-100">
-          <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">পেমেন্ট</p>
+        {/* পেমেন্ট */}
+        <div>
+          <p className="text-[11px] font-bold text-slate-600 uppercase tracking-wide mb-1.5">পেমেন্ট</p>
           <div className="flex gap-2 mb-2">
             <button type="button" onClick={() => togglePaidNow(false)} className={`flex-1 text-xs font-semibold rounded-lg py-2 ${!paidNow ? "bg-stone-700 text-white" : "bg-stone-100 text-stone-500"}`}>বাকি (Due)</button>
-            <button type="button" onClick={() => togglePaidNow(true)} className={`flex-1 text-xs font-semibold rounded-lg py-2 ${paidNow ? "bg-emerald-600 text-white" : "bg-stone-100 text-stone-500"}`}>এখনই নগদ দেওয়া হয়েছে</button>
+            <button type="button" onClick={() => togglePaidNow(true)} className={`flex-1 text-xs font-semibold rounded-lg py-2 ${paidNow ? "bg-emerald-600 text-white" : "bg-stone-100 text-stone-500"}`}>এখনই নগদ</button>
           </div>
           {paidNow && (
-            <div className="space-y-2">
-              <Field label="কে পেমেন্ট করলো">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[11px] text-stone-500 mb-1 block">কে পেমেন্ট করলো</label>
                 <SearchableSelect
                   value={paidByAccountId}
                   onChange={setPaidByAccountId}
                   options={(cashbankAccounts || []).filter((a) => a.active !== false).map((a) => ({ value: a.id, label: a.name }))}
                 />
-              </Field>
-              <Field label="পেমেন্ট পরিমাণ (৳)">
-                <input className={inputCls} type="number" min="0" step="any" value={cashPaidAmount} onChange={(e) => setCashPaidAmount(e.target.value)} />
-              </Field>
-              <p className="text-[11px] text-stone-400">চালানের মোট: {fmtTaka(grandTotal)} (মাল-মূল্য + খরচ) — চাইলে আংশিক পেমেন্টও দেওয়া যাবে</p>
+              </div>
+              <div>
+                <label className="text-[11px] text-stone-500 mb-1 block">পরিমাণ (৳)</label>
+                <input className={`${inputCls} !text-xs`} type="number" min="0" step="any" value={cashPaidAmount} onChange={(e) => setCashPaidAmount(e.target.value)} />
+              </div>
             </div>
           )}
         </div>
 
-        <Field label="নোট">
-          <input className={inputCls} value={header.note} onChange={(e) => setHeader({ ...header, note: e.target.value })} />
-        </Field>
-        <button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 text-slate-900 font-semibold rounded-lg py-2.5 flex items-center justify-center gap-2 transition-colors">
-          <Plus size={16} /> পার্চেজ এন্ট্রি সংরক্ষণ করো
-        </button>
-      </FormShell>
+        <div>
+          <label className="text-[11px] text-stone-500 mb-1 block">নোট (ঐচ্ছিক)</label>
+          <input className={`${inputCls} !text-xs`} value={header.note} onChange={(e) => setHeader({ ...header, note: e.target.value })} />
+        </div>
+
+        {/* সামারি — সাবমিটের ঠিক উপরে */}
+        <div className="bg-stone-800 text-white rounded-xl px-4 py-3 space-y-1">
+          <div className="flex justify-between text-xs text-stone-300">
+            <span>আইটেম টোটাল</span>
+            <span style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{fmtTaka(itemsTotal)}</span>
+          </div>
+          {chargesTotal > 0 && (
+            <div className="flex justify-between text-xs text-stone-300">
+              <span>সাপ্লায়ার খরচ</span>
+              <span style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{fmtTaka(chargesTotal)}</span>
+            </div>
+          )}
+          {paidNow && (
+            <div className="flex justify-between text-xs text-stone-300">
+              <span>এখনই পেমেন্ট</span>
+              <span style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{fmtTaka(cashPaidAmount)}</span>
+            </div>
+          )}
+          <div className="flex justify-between items-baseline pt-1.5 mt-1.5 border-t border-stone-600">
+            <span className="text-sm font-bold text-amber-400">সর্বমোট</span>
+            <span className="text-lg font-bold text-amber-400" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{fmtTaka(grandTotal)}</span>
+          </div>
+        </div>
+
+        {/* স্টিকি সাবমিট — ফর্মের ভিতরেই, তাই একই submit হ্যান্ডলার ব্যবহার করে */}
+        <div className="sticky bottom-0 -mx-4 -mb-4 px-4 py-3 bg-white border-t border-stone-200">
+          <button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 text-slate-900 font-semibold rounded-lg py-3 flex items-center justify-center gap-2 transition-colors">
+            <Plus size={16} /> পার্চেজ এন্ট্রি সংরক্ষণ করো
+          </button>
+        </div>
+      </form>
 
       <div className="bg-white rounded-xl border border-stone-200 p-5">
         <h3 className="font-bold text-slate-700 mb-3" style={{ fontFamily: "'Oswald', sans-serif" }}>সাম্প্রতিক পার্চেজ এন্ট্রি ({(challans || []).length})</h3>
