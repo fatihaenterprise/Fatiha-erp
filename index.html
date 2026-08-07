@@ -303,7 +303,29 @@ const MET_COMPANY_PHONES = [{ label: "ওনার", number: "01818508700" }, { 
 // লেটারহেড — গাঢ়/গোল্ড থিম, FT লোগো ব্যাজ, গোল্ড-লাইন ডিভাইডার — একবার বানিয়ে সব জায়গায় পুনর্ব্যবহার করা হয়,
 // যাতে সবগুলো ডকুমেন্ট একই রকম দেখতে/অনুভব হয়। children-এ যা দেওয়া হয় সেটাই বডি অংশে বসে (সাধারণত একটা টেবিল)।
 // রঙ — আগে প্রায়-কালো (stone) হেডার ছিল, এখন গাঢ় মেরুন-অ্যাম্বার গ্রেডিয়েন্ট (আরও গরম/প্রিমিয়াম লুক)।
-function MetLetterheadDoc({ id, subtitle, dateLabel, children }) {
+// compact: শুধু Retail Daily (খুচরা দৈনিক হিসাব) প্রিন্ট/PDF-এর জন্য — বাকি সব ডকুমেন্টে (লেজার, চালান, ক্যাশ
+// ক্লোজিং) compact পাঠানো হয় না, তাই তাদের ডিফল্ট (আগের মতো) লেআউট/স্টাইল একদম অপরিবর্তিত থাকে।
+function MetLetterheadDoc({ id, subtitle, dateLabel, children, compact }) {
+  if (compact) {
+    return (
+      <div id={id} style={{ background: "#fff", fontFamily: "'Noto Sans Bengali', 'Hind Siliguri', sans-serif", width: "100%", maxWidth: "190mm", boxSizing: "border-box", borderRadius: "8px", overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,.10)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "2.5mm", padding: "3mm 4mm", background: "linear-gradient(135deg, #7c2d12 0%, #92400e 55%, #b45309 100%)" }}>
+          <div style={{ width: "8mm", height: "8mm", borderRadius: "2mm", background: "linear-gradient(140deg,#fde68a,#fbbf24)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Oswald',sans-serif", fontWeight: 700, fontSize: "10px", color: "#7c2d12", flexShrink: 0 }}>FT</div>
+          <p style={{ fontFamily: "'Oswald',sans-serif", fontSize: "13px", color: "#fff", margin: 0, letterSpacing: ".02em", flex: 1 }}>{MET_COMPANY_NAME}</p>
+          {dateLabel && <p style={{ margin: 0, fontSize: "10px", color: "#fde8cb", whiteSpace: "nowrap" }}>{dateLabel}</p>}
+        </div>
+        <div style={{ height: "2px", background: "linear-gradient(90deg,#fde68a,#fbbf24 40%,#f59e0b)" }} />
+        <div style={{ padding: "3mm 4mm 4mm", color: "#334155", fontSize: "12px", boxSizing: "border-box" }}>
+          {subtitle && <p style={{ margin: "0 0 6px", fontSize: "12px", fontWeight: 700, color: "#7c2d12" }}>{subtitle}</p>}
+          {children}
+          <div style={{ marginTop: "8px", paddingTop: "6px", borderTop: "1px solid #f0eee9", display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: "6px", flexWrap: "wrap" }}>
+            <p style={{ margin: 0, fontSize: "9px", color: "#a8a29e" }}>{MET_COMPANY_ADDRESS} · {MET_COMPANY_PHONES.map((p) => p.number).join(" / ")}</p>
+            <p style={{ margin: 0, fontSize: "9px", color: "#a8a29e", whiteSpace: "nowrap" }}>জেনারেট: {new Date().toLocaleString("bn-BD")}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div id={id} style={{ background: "#fff", fontFamily: "'Noto Sans Bengali', 'Hind Siliguri', sans-serif", width: "190mm", borderRadius: "10px", overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,.10)" }}>
       <div style={{ position: "relative", padding: "10mm 10mm 8mm", background: "linear-gradient(135deg, #7c2d12 0%, #92400e 55%, #b45309 100%)", overflow: "hidden" }}>
@@ -338,6 +360,10 @@ function MetLetterheadDoc({ id, subtitle, dateLabel, children }) {
 // মেটালসের প্রিন্ট টেবিলে ব্যবহারের জন্য সাধারণ সেল-স্টাইল (গোল্ড হেডার রো, স্ট্রাইপড সারি, হাইলাইটেড টোটাল রো)
 const metPrintTh = { padding: "8px 8px", textAlign: "left", fontSize: "10.5px", fontWeight: 700, letterSpacing: ".02em", textTransform: "uppercase" };
 const metPrintTd = { padding: "8px 8px", borderBottom: "1px solid #f5f4f1", color: "#44403c" };
+// compact ভ্যারিয়েন্ট — শুধু Retail Daily প্রিন্ট শিটে ব্যবহৃত (row height কমানোর জন্য); উপরের metPrintTh/Td
+// অন্য সব মেটালস ডকুমেন্টে যেভাবে ছিল সেভাবেই থাকছে, তাই তাদের row height অপরিবর্তিত।
+const metPrintThCompact = { padding: "4px 6px", textAlign: "left", fontSize: "9.5px", fontWeight: 700, letterSpacing: ".02em", textTransform: "uppercase" };
+const metPrintTdCompact = { padding: "3px 6px", borderBottom: "1px solid #f5f4f1", color: "#44403c", fontSize: "11px" };
 const formatTicketId = (entryTime, ticketNo) => {
   if (!ticketNo) return "—";
   const d = entryTime ? new Date(entryTime) : new Date();
@@ -1172,7 +1198,7 @@ const inputCls = "w-full border border-stone-300 rounded-lg px-3 py-2 text-sm fo
 
 // সার্চ-সহ ড্রপডাউন — সাপ্লায়ার/প্রোডাক্ট/কাস্টমার/মিল-এর মতো লম্বা লিস্ট থেকে টাইপ করে খুঁজে বের করার জন্য।
 // options: [{ value, label }] — value ফাঁকা রেখে ক্লিয়ার করা যায়।
-function SearchableSelect({ value, onChange, options, placeholder = "— বেছে নাও —", disabled, required }) {
+function SearchableSelect({ value, onChange, options, placeholder = "— বেছে নাও —", disabled, required, compact }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
@@ -1245,10 +1271,10 @@ function SearchableSelect({ value, onChange, options, placeholder = "— বে�
           }
           setQuery("");
         }}
-        className={`${inputCls} text-left flex items-center justify-between ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+        className={`${compact ? "w-full border border-stone-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent" : inputCls} text-left flex items-center justify-between ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
       >
         <span className={`truncate ${selected ? "text-slate-700" : "text-stone-400"}`}>{selected ? selected.label : placeholder}</span>
-        <ChevronRight size={14} className={`shrink-0 ml-1 transition-transform text-stone-400 ${open ? "rotate-90" : ""}`} />
+        <ChevronRight size={compact ? 12 : 14} className={`shrink-0 ml-1 transition-transform text-stone-400 ${open ? "rotate-90" : ""}`} />
       </button>
       {open && (
         <div className="absolute z-30 mt-1 w-full bg-white border border-stone-200 rounded-lg shadow-lg max-h-64 overflow-hidden flex flex-col">
@@ -5941,7 +5967,7 @@ function App() {
       ...d,
       metPurchases: [...insertedPurchases.map((r) => objToCamel(r[0])), ...d.metPurchases],
       metSales: [...insertedSales.map((r) => objToCamel(r[0])), ...d.metSales],
-      wpCashbankTransactions: cbTxnRows.length ? [...cbTxnRows.map((r) => objToCamel(r[0])), ...d.wpCashbankTransactions] : d.wpCashbankTransactions,
+      wpCashbankTransactions: cbTxnRows.length ? [...cbTxnRows.map((r) => objToCamel(r)), ...d.wpCashbankTransactions] : d.wpCashbankTransactions,
     }));
     showToast(`খুচরা দৈনিক এন্ট্রি সংরক্ষিত হয়েছে${dkcAccount ? " — DKC ক্যাশ অটো আপডেট হয়েছে" : " — ⚠️ DKC অ্যাকাউন্ট খুঁজে পাওয়া যায়নি, ক্যাশে বসেনি"}`);
   });
@@ -8789,7 +8815,10 @@ function fmtAuditDate(iso) {
   }
 }
 
-function MasterCrud({ title, addTitle, editTitle, records, fields, onAdd, onUpdate, onToggleActive, onDelete, searchKeys, renderPrimary, renderSecondary, extraTopContent, validate, onRowClick, initialForm }) {
+function MasterCrud({ title, addTitle, editTitle, records, fields, onAdd, onUpdate, onToggleActive, onDelete, searchKeys, renderPrimary, renderSecondary, extraTopContent, validate, onRowClick, initialForm, compactList, compactSecondaryLabel, compactSecondary }) {
+  // compactList: ঐচ্ছিক (default বন্ধ) — শুধু যেসব caller স্পষ্টভাবে পাস করে (যেমন মেটালস আইটেম মাস্টার) তাদের
+  // জন্য সরল ৩-কলাম তালিকা (নাম | compactSecondary | এডিট) দেখায়। পাস না করলে নিচের মূল টেবিলই আগের মতো
+  // অপরিবর্তিত থাকে — বাকি সব মডিউলের আচরণ/UI একদম আগের মতোই।
   const PAGE_SIZE = 12;
   // Pickup Freight Prefill (L27): initialForm ঐচ্ছিক prefill override — না দিলে আগের মতোই field.default ব্যবহার
   // হয়, অন্য কোনো existing caller-এর behavior বদলায় না। শুধু Add mode-এ প্রযোজ্য।
@@ -8943,6 +8972,43 @@ function MasterCrud({ title, addTitle, editTitle, records, fields, onAdd, onUpda
             {editingId ? "বাতিল" : "মুছুন (ক্লিয়ার)"}
           </button>
         </div>
+        {/* compactList মোডে তালিকার সারিতে সক্রিয়/নিষ্ক্রিয়/মুছুন বাটন দেখানো হয় না (মোবাইল সরলীকরণ) —
+            তাই একই ফাংশনালিটি এডিট ফর্মের ভিতরে আগের মতোই রাখা হলো, শুধু জায়গা বদলেছে, লজিক অপরিবর্তিত। */}
+        {compactList && editingId && (() => {
+          const rec = (records || []).find((x) => x.id === editingId);
+          if (!rec) return null;
+          return (
+            <div className="flex gap-2 pt-3 mt-1 border-t border-stone-100">
+              {onToggleActive && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const willDeactivate = rec.active !== false;
+                    if (willDeactivate && !window.confirm(`"${renderPrimary(rec)}"-কে নিষ্ক্রিয় করা হবে — এটা তালিকা থেকে সাধারণভাবে আর দেখা যাবে না, ড্রপডাউনেও আসবে না। নিশ্চিত?`)) return;
+                    onToggleActive(rec.id, rec.active === false);
+                  }}
+                  className={`flex-1 text-xs font-semibold rounded-lg py-2 transition-colors ${rec.active === false ? "text-emerald-700 bg-emerald-50 hover:bg-emerald-100" : "text-rose-600 bg-rose-50 hover:bg-rose-100"}`}
+                >
+                  {rec.active === false ? "সক্রিয় করুন" : "নিষ্ক্রিয় করুন"}
+                </button>
+              )}
+              {onDelete && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm("এই এন্ট্রিটা স্থায়ীভাবে তালিকা থেকে সরিয়ে দেওয়া হবে (মুছে ফেলা)। নিশ্চিত?")) {
+                      onDelete(rec.id);
+                      cancelEdit();
+                    }
+                  }}
+                  className="flex-1 text-xs font-semibold text-stone-500 bg-stone-100 hover:bg-stone-200 rounded-lg py-2 transition-colors"
+                >
+                  মুছুন
+                </button>
+              )}
+            </div>
+          );
+        })()}
       </FormShell>
       )}
       <div className="bg-white rounded-xl border border-stone-200 p-5">
@@ -8977,7 +9043,36 @@ function MasterCrud({ title, addTitle, editTitle, records, fields, onAdd, onUpda
         </div>
         <div className="overflow-x-auto -mx-1">
           {pageItems.length === 0 && <p className="text-stone-400 text-sm">কোনো তথ্য পাওয়া যায়নি</p>}
-          {pageItems.length > 0 && (
+          {pageItems.length > 0 && compactList && (
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-stone-50 border-b border-stone-200 text-stone-500">
+                  <th className="text-left px-2 py-1.5 font-semibold">নাম</th>
+                  <th className="text-left px-1 py-1.5 font-semibold">{compactSecondaryLabel || "ইউনিট"}</th>
+                  <th className="px-1 py-1.5 font-semibold text-right">এডিট</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pageItems.map((r) => (
+                  <tr
+                    key={r.id}
+                    onClick={() => startEdit(r)}
+                    className={`border-b border-stone-50 last:border-0 cursor-pointer hover:bg-amber-50/40 active:bg-amber-50 transition-colors ${r.active === false ? "bg-stone-50 opacity-70" : ""}`}
+                  >
+                    <td className="px-2 py-2.5 align-middle font-semibold text-slate-700">
+                      {renderPrimary(r)}
+                      {r.active === false && <span className="ml-1.5 text-[9px] font-semibold text-stone-500 bg-stone-200 px-1 py-0.5 rounded">নিষ্ক্রিয়</span>}
+                    </td>
+                    <td className="px-1 py-2.5 align-middle text-stone-500">{compactSecondary ? compactSecondary(r) : ""}</td>
+                    <td className="px-1 py-2.5 align-middle text-right">
+                      <ChevronRight size={16} className="text-stone-300 inline-block" />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {pageItems.length > 0 && !compactList && (
             <table className="w-full text-xs" style={{ minWidth: 520 }}>
               <thead>
                 <tr className="bg-stone-50 border-b border-stone-200 text-stone-500">
@@ -11279,6 +11374,9 @@ function MetProductModule({ products, categories, units, onAdd, onUpdate, onTogg
       onDelete={onDelete}
       renderPrimary={(p) => p.name}
       renderSecondary={(p) => `${categoryName(p.categoryId)} · ${unitName(p.unitId)}`}
+      compactList
+      compactSecondaryLabel="ইউনিট"
+      compactSecondary={(p) => unitName(p.unitId)}
     />
   );
 }
@@ -14636,28 +14734,34 @@ function MetPurchaseModule({ purchases, suppliers, products, rates, supplierLedg
   if (lastInvoice) {
     return (
       <div className="space-y-4 max-w-md">
-        <MetLetterheadDoc id="met-purchase-invoice" subtitle={`পার্চেজ চালান — ${lastInvoice.supplierName}`} dateLabel={`${lastInvoice.date}${lastInvoice.vehicleNumber ? ` · গাড়ি: ${lastInvoice.vehicleNumber}` : ""}`}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+        <MetLetterheadDoc id="met-purchase-invoice" subtitle={`পার্চেজ চালান — ${lastInvoice.supplierName}`} dateLabel={`${lastInvoice.date}${lastInvoice.vehicleNumber ? ` · গাড়ি: ${lastInvoice.vehicleNumber}` : ""}`} compact>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px", tableLayout: "fixed" }}>
+            <colgroup>
+              <col style={{ width: "40%" }} />
+              <col style={{ width: "20%" }} />
+              <col style={{ width: "18%" }} />
+              <col style={{ width: "22%" }} />
+            </colgroup>
             <thead>
               <tr style={{ background: "#1c1917" }}>
-                <th style={{ ...metPrintTh, color: "#fbbf24", borderRadius: "6px 0 0 0" }}>আইটেম</th>
-                <th style={{ ...metPrintTh, color: "#fbbf24", textAlign: "right" }}>ওজন (কেজি)</th>
-                <th style={{ ...metPrintTh, color: "#fbbf24", textAlign: "right" }}>রেট</th>
-                <th style={{ ...metPrintTh, color: "#fbbf24", textAlign: "right", borderRadius: "0 6px 0 0" }}>টাকা</th>
+                <th style={{ ...metPrintThCompact, color: "#fbbf24", borderRadius: "5px 0 0 0" }}>আইটেম</th>
+                <th style={{ ...metPrintThCompact, color: "#fbbf24", textAlign: "right" }}>ওজন</th>
+                <th style={{ ...metPrintThCompact, color: "#fbbf24", textAlign: "right" }}>রেট</th>
+                <th style={{ ...metPrintThCompact, color: "#fbbf24", textAlign: "right", borderRadius: "0 5px 0 0" }}>টাকা</th>
               </tr>
             </thead>
             <tbody>
               {lastInvoice.items.map((it, i) => (
                 <tr key={i} style={i % 2 === 1 ? { background: "#fafaf9" } : undefined}>
-                  <td style={metPrintTd}>{it.name}</td>
-                  <td style={{ ...metPrintTd, textAlign: "right" }}>{it.quantityKg}</td>
-                  <td style={{ ...metPrintTd, textAlign: "right", fontFamily: "'IBM Plex Mono',monospace" }}>{fmtTaka(it.ratePerKg)}</td>
-                  <td style={{ ...metPrintTd, textAlign: "right", fontFamily: "'IBM Plex Mono',monospace" }}>{fmtTaka(it.amount)}</td>
+                  <td style={{ ...metPrintTdCompact, overflow: "hidden", wordBreak: "break-word" }}>{it.name}</td>
+                  <td style={{ ...metPrintTdCompact, textAlign: "right" }}>{it.quantityKg}</td>
+                  <td style={{ ...metPrintTdCompact, textAlign: "right", fontFamily: "'IBM Plex Mono',monospace" }}>{fmtTaka(it.ratePerKg)}</td>
+                  <td style={{ ...metPrintTdCompact, textAlign: "right", fontFamily: "'IBM Plex Mono',monospace" }}>{fmtTaka(it.amount)}</td>
                 </tr>
               ))}
               <tr style={{ background: "#1c1917" }}>
-                <td colSpan={3} style={{ padding: "9px 8px", color: "#fbbf24", fontWeight: 700, fontSize: "14px", borderRadius: "0 0 0 6px" }}>সর্বমোট</td>
-                <td style={{ padding: "9px 8px", color: "#fbbf24", fontWeight: 700, fontSize: "14px", textAlign: "right", fontFamily: "'IBM Plex Mono',monospace", borderRadius: "0 0 6px 0" }}>{fmtTaka(lastInvoice.total)}</td>
+                <td colSpan={3} style={{ padding: "5px 6px", color: "#fbbf24", fontWeight: 700, fontSize: "12px", borderRadius: "0 0 0 5px" }}>সর্বমোট</td>
+                <td style={{ padding: "5px 6px", color: "#fbbf24", fontWeight: 700, fontSize: "12px", textAlign: "right", fontFamily: "'IBM Plex Mono',monospace", borderRadius: "0 0 5px 0" }}>{fmtTaka(lastInvoice.total)}</td>
               </tr>
             </tbody>
           </table>
@@ -14871,28 +14975,34 @@ function MetSaleModule({ sales, customers, products, rates, customerLedger, cash
   if (lastInvoice) {
     return (
       <div className="space-y-4 max-w-md">
-        <MetLetterheadDoc id="met-sale-invoice" subtitle={`সেলস চালান — ${lastInvoice.customerName}`} dateLabel={`${lastInvoice.date}${lastInvoice.vehicleNumber ? ` · গাড়ি: ${lastInvoice.vehicleNumber}` : ""}`}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+        <MetLetterheadDoc id="met-sale-invoice" subtitle={`সেলস চালান — ${lastInvoice.customerName}`} dateLabel={`${lastInvoice.date}${lastInvoice.vehicleNumber ? ` · গাড়ি: ${lastInvoice.vehicleNumber}` : ""}`} compact>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px", tableLayout: "fixed" }}>
+            <colgroup>
+              <col style={{ width: "40%" }} />
+              <col style={{ width: "20%" }} />
+              <col style={{ width: "18%" }} />
+              <col style={{ width: "22%" }} />
+            </colgroup>
             <thead>
               <tr style={{ background: "#1c1917" }}>
-                <th style={{ ...metPrintTh, color: "#fbbf24", borderRadius: "6px 0 0 0" }}>আইটেম</th>
-                <th style={{ ...metPrintTh, color: "#fbbf24", textAlign: "right" }}>ওজন (কেজি)</th>
-                <th style={{ ...metPrintTh, color: "#fbbf24", textAlign: "right" }}>রেট</th>
-                <th style={{ ...metPrintTh, color: "#fbbf24", textAlign: "right", borderRadius: "0 6px 0 0" }}>টাকা</th>
+                <th style={{ ...metPrintThCompact, color: "#fbbf24", borderRadius: "5px 0 0 0" }}>আইটেম</th>
+                <th style={{ ...metPrintThCompact, color: "#fbbf24", textAlign: "right" }}>ওজন</th>
+                <th style={{ ...metPrintThCompact, color: "#fbbf24", textAlign: "right" }}>রেট</th>
+                <th style={{ ...metPrintThCompact, color: "#fbbf24", textAlign: "right", borderRadius: "0 5px 0 0" }}>টাকা</th>
               </tr>
             </thead>
             <tbody>
               {lastInvoice.items.map((it, i) => (
                 <tr key={i} style={i % 2 === 1 ? { background: "#fafaf9" } : undefined}>
-                  <td style={metPrintTd}>{it.name}</td>
-                  <td style={{ ...metPrintTd, textAlign: "right" }}>{it.quantityKg}</td>
-                  <td style={{ ...metPrintTd, textAlign: "right", fontFamily: "'IBM Plex Mono',monospace" }}>{fmtTaka(it.ratePerKg)}</td>
-                  <td style={{ ...metPrintTd, textAlign: "right", fontFamily: "'IBM Plex Mono',monospace" }}>{fmtTaka(it.amount)}</td>
+                  <td style={{ ...metPrintTdCompact, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</td>
+                  <td style={{ ...metPrintTdCompact, textAlign: "right" }}>{it.quantityKg}</td>
+                  <td style={{ ...metPrintTdCompact, textAlign: "right", fontFamily: "'IBM Plex Mono',monospace" }}>{fmtTaka(it.ratePerKg)}</td>
+                  <td style={{ ...metPrintTdCompact, textAlign: "right", fontFamily: "'IBM Plex Mono',monospace" }}>{fmtTaka(it.amount)}</td>
                 </tr>
               ))}
               <tr style={{ background: "#1c1917" }}>
-                <td colSpan={3} style={{ padding: "9px 8px", color: "#fbbf24", fontWeight: 700, fontSize: "14px", borderRadius: "0 0 0 6px" }}>সর্বমোট</td>
-                <td style={{ padding: "9px 8px", color: "#fbbf24", fontWeight: 700, fontSize: "14px", textAlign: "right", fontFamily: "'IBM Plex Mono',monospace", borderRadius: "0 0 6px 0" }}>{fmtTaka(lastInvoice.total)}</td>
+                <td colSpan={3} style={{ padding: "5px 6px", color: "#fbbf24", fontWeight: 700, fontSize: "12px", borderRadius: "0 0 0 5px" }}>সর্বমোট</td>
+                <td style={{ padding: "5px 6px", color: "#fbbf24", fontWeight: 700, fontSize: "12px", textAlign: "right", fontFamily: "'IBM Plex Mono',monospace", borderRadius: "0 0 5px 0" }}>{fmtTaka(lastInvoice.total)}</td>
               </tr>
             </tbody>
           </table>
@@ -14937,40 +15047,37 @@ function MetSaleModule({ sales, customers, products, rates, customerLedger, cash
 
           <div>
             <p className="text-[11px] font-bold text-stone-400 uppercase tracking-wide mb-1.5">আইটেম</p>
-            <div className="border border-stone-200 rounded-lg overflow-x-auto">
-              <table className="w-full text-xs" style={{ minWidth: 480 }}>
-                <thead>
-                  <tr className="bg-stone-50 border-b border-stone-200 text-stone-500">
-                    <th className="text-left px-2 py-1.5 font-semibold">আইটেম</th>
-                    <th className="px-1 py-1.5 font-semibold">ওজন (কেজি)</th>
-                    <th className="px-1 py-1.5 font-semibold">রেট (৳/কেজি)</th>
-                    <th className="px-1 py-1.5 font-semibold text-right">টাকা</th>
-                    <th className="w-6"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((r, idx) => (
-                    <tr key={idx} className="border-b border-stone-50 last:border-0">
-                      <td className="px-1 py-1 min-w-[130px]">
-                        <SearchableSelect value={r.productId} onChange={(v) => setRowProduct(idx, v)} options={activeProducts.map((p) => ({ value: p.id, label: `${p.isPinned ? "📌 " : ""}${p.name}` }))} placeholder="বাছুন" />
-                      </td>
-                      <td className="px-1 py-1"><input type="number" min="0" step="any" className="w-20 border border-stone-200 rounded px-1.5 py-1.5 text-right" value={r.quantityKg} onChange={(e) => patchRow(idx, { quantityKg: e.target.value })} /></td>
-                      <td className="px-1 py-1">
-                        <input type="number" min="0" step="any" className="w-20 border border-stone-200 rounded px-1.5 py-1.5 text-right" value={r.ratePerKg} onChange={(e) => patchRow(idx, { ratePerKg: e.target.value, rateAuto: false })} />
-                        {onSaveRate && r.productId && Number(r.ratePerKg || 0) > 0 && (
-                          <button type="button" onClick={() => onSaveRate({ productId: r.productId, salesRate: Number(r.ratePerKg), effectiveFrom: todayStr(), active: true })} className="block w-full text-center text-[10px] text-sky-600 hover:text-sky-700 mt-0.5">
-                            💾 রেট সেভ
-                          </button>
-                        )}
-                      </td>
-                      <td className="px-1 py-1 text-right font-semibold text-stone-600" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{fmtTaka(Number(r.quantityKg || 0) * Number(r.ratePerKg || 0))}</td>
-                      <td className="px-1 py-1 text-center">
-                        {rows.length > 1 && <button type="button" onClick={() => removeRow(idx)} className="text-rose-400 hover:text-rose-600">✕</button>}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="grid grid-cols-3 gap-1 px-1 mb-0.5">
+              <p className="text-[9px] text-stone-400">ওজন (কেজি)</p>
+              <p className="text-[9px] text-stone-400">রেট (৳/কেজি)</p>
+              <p className="text-[9px] text-stone-400 text-right">টাকা</p>
+            </div>
+            <div className="space-y-1">
+              {rows.map((r, idx) => (
+                <div key={idx} className="border border-stone-200 rounded-lg p-1 space-y-0.5">
+                  <div className="flex items-center gap-1">
+                    <div className="flex-1 min-w-0">
+                      <SearchableSelect compact value={r.productId} onChange={(v) => setRowProduct(idx, v)} options={activeProducts.map((p) => ({ value: p.id, label: `${p.isPinned ? "📌 " : ""}${p.name}` }))} placeholder="আইটেম বাছুন" />
+                    </div>
+                    {rows.length > 1 && <button type="button" onClick={() => removeRow(idx)} className="shrink-0 text-rose-400 hover:text-rose-600 px-1 leading-none">✕</button>}
+                  </div>
+                  <div className="grid grid-cols-3 gap-1">
+                    <div className="flex items-center gap-1">
+                      <input type="number" min="0" step="any" placeholder="ওজন" className="w-full min-w-0 border border-sky-100 bg-sky-50 rounded px-1 py-0.5 text-right text-[11px] focus:outline-none focus:border-sky-400" value={r.quantityKg} onChange={(e) => patchRow(idx, { quantityKg: e.target.value })} />
+                      <span className="text-[9px] text-stone-400 shrink-0">কেজি</span>
+                    </div>
+                    <div>
+                      <input type="number" min="0" step="any" placeholder="রেট" className="w-full min-w-0 border border-amber-100 bg-amber-50 rounded px-1 py-0.5 text-right text-[11px] focus:outline-none focus:border-amber-400" value={r.ratePerKg} onChange={(e) => patchRow(idx, { ratePerKg: e.target.value, rateAuto: false })} />
+                      {onSaveRate && r.productId && Number(r.ratePerKg || 0) > 0 && (
+                        <button type="button" onClick={() => onSaveRate({ productId: r.productId, salesRate: Number(r.ratePerKg), effectiveFrom: todayStr(), active: true })} className="block w-full text-center text-[9px] text-sky-600 hover:text-sky-700 leading-tight truncate">
+                          💾 সেভ
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-right font-semibold text-stone-600 text-[11px] self-center border border-emerald-100 bg-emerald-50 rounded px-1 py-0.5" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{fmtTaka(Number(r.quantityKg || 0) * Number(r.ratePerKg || 0))}</p>
+                  </div>
+                </div>
+              ))}
             </div>
             <button type="button" onClick={addRow} className="mt-2 text-xs font-semibold text-amber-600 hover:text-amber-700 flex items-center gap-1">
               <Plus size={14} /> আরেকটা আইটেম যোগ করুন
@@ -15045,13 +15152,42 @@ function MetRetailDailyModule({ products, purchases, sales, onAdd, onAddProduct,
   const [addingItem, setAddingItem] = useState(false);
   const [pickExisting, setPickExisting] = useState("");
   const [newItemName, setNewItemName] = useState("");
+  // ক্রয়/বিক্রয় ট্যাব — শুধু কোন টেবিল দেখানো হবে সেটা নিয়ন্ত্রণ করে (show/hide UI); rows state (এন্ট্রি করা
+  // ডেটা) এই কম্পোনেন্টেই থাকে, ট্যাব বদলালেও হারায় না — টেবিল/হিসাব/সেভ লজিক অপরিবর্তিত।
+  const [retailTab, setRetailTab] = useState("purchase");
+  // rowOverrides: কোনো row-তে আজকের শিটের জন্য অন্য আইটেম বসানো হলে { originalProductId: newProductId }
+  // আকারে এখানে রাখা হয় — Item Master-এর আসল ডেটা/লিস্ট একদম অপরিবর্তিত থাকে, শুধু এই sheet-এর submit-এ
+  // ওই row-এর জন্য কোন productId পাঠানো হবে সেটা এখান থেকে ঠিক হয়। rows[] (Weight/Amount) আগের মতোই
+  // original productId key দিয়ে রাখা হয়, তাই Total/Save/DKC হিসাবের লজিক অপরিবর্তিত থাকে।
+  const [rowOverrides, setRowOverrides] = useState({});
+  const [pickerRow, setPickerRow] = useState(null);
 
   // আইটেমের ক্রম এখন ডেটাবেজ-নিয়ন্ত্রিত (met_products.retail_sort_order) — ওনার যেই ক্রমে চেয়েছিলেন সেভাবেই
   // সাজানো থাকে; নতুন আইটেম শিটে যোগ করলে (নিচে) সেটা সবার শেষে বসে (max+1), কোনোদিন এলোমেলো হয়ে যায় না।
   const retailItems = (products || []).filter((p) => p.isRetailItem && p.active !== false)
     .sort((a, b) => (a.retailSortOrder ?? 9999) - (b.retailSortOrder ?? 9999));
   const nonRetailItems = (products || []).filter((p) => !p.isRetailItem && p.active !== false);
+  const activeMasterItems = (products || []).filter((p) => p.active !== false);
   const nextSortOrder = () => Math.max(0, ...retailItems.map((p) => p.retailSortOrder || 0)) + 1;
+  // কোনো row-তে যেই আইটেম আসলে দেখানো হবে (override থাকলে সেটা, না থাকলে মূল আইটেম)
+  const effectiveItem = (p) => {
+    const overrideId = rowOverrides[p.id];
+    if (!overrideId) return p;
+    return (products || []).find((x) => x.id === overrideId) || p;
+  };
+  // row-এর item name-এ চাপলে এই ফাংশন ডাকা হয় — Weight/Amount থাকলে confirm চায়, খালি থাকলে সরাসরি বদলে দেয়
+  const handleRowItemChange = (origId, newId) => {
+    const currentEffectiveId = rowOverrides[origId] || origId;
+    if (!newId || newId === currentEffectiveId) { setPickerRow(null); return; }
+    const cur = rows[origId] || {};
+    const hasData = Number(cur.purchaseWeight || 0) > 0 || Number(cur.purchaseAmount || 0) > 0 || Number(cur.saleWeight || 0) > 0 || Number(cur.saleAmount || 0) > 0;
+    if (hasData) {
+      if (!window.confirm("এই row-এর Weight/Amount আছে — আইটেম বদলালে এই সারির এন্ট্রি মুছে যাবে। এগোবেন?")) return;
+      setRows((r) => ({ ...r, [origId]: {} }));
+    }
+    setRowOverrides((o) => ({ ...o, [origId]: newId }));
+    setPickerRow(null);
+  };
 
   const setCell = (productId, field, value) => setRows((r) => ({ ...r, [productId]: { ...r[productId], [field]: value } }));
   const totalPurchase = retailItems.reduce((s, p) => s + Number(rows[p.id]?.purchaseAmount || 0), 0);
@@ -15076,8 +15212,11 @@ function MetRetailDailyModule({ products, purchases, sales, onAdd, onAddProduct,
     if (!hasAnyEntry || saving) return;
     setSaving(true);
     try {
-      await onAdd({ date, items: retailItems.map((p) => ({ productId: p.id, ...rows[p.id] })) });
+      // আজকের শিটে যেই row-তে item override করা হয়েছে, সেই row-এর জন্য নতুন (বদলানো) productId পাঠানো
+      // হয় — Weight/Amount/Total হিসাব ও Save/DKC/Ledger-এর বাকি লজিক অপরিবর্তিত।
+      await onAdd({ date, items: retailItems.map((p) => ({ productId: rowOverrides[p.id] || p.id, ...rows[p.id] })) });
       setRows({});
+      setRowOverrides({});
     } finally {
       setSaving(false);
     }
@@ -15106,56 +15245,56 @@ function MetRetailDailyModule({ products, purchases, sales, onAdd, onAddProduct,
         <button onClick={() => setViewDate(null)} className="text-xs font-semibold text-slate-500 hover:text-slate-800 flex items-center gap-1">
           <span aria-hidden="true">←</span> লেজারে ফিরুন
         </button>
-        <MetLetterheadDoc id="retail-print-area" subtitle="খুচরা দৈনিক হিসাব" dateLabel={viewDate}>
-          <div style={{ marginBottom: "14px" }}>
-            <p style={{ fontSize: "11px", fontWeight: 700, color: "#b45309", marginBottom: "4px" }}>🛒 ক্রয়</p>
-            {dayPurchases.length === 0 ? <p style={{ fontSize: "11px", color: "#a8a29e" }}>কোনো ক্রয় নেই</p> : (
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+        <MetLetterheadDoc id="retail-print-area" subtitle="খুচরা দৈনিক হিসাব" dateLabel={viewDate} compact>
+          <div style={{ marginBottom: "8px" }}>
+            <p style={{ fontSize: "10px", fontWeight: 700, color: "#b45309", marginBottom: "2px" }}>🛒 ক্রয়</p>
+            {dayPurchases.length === 0 ? <p style={{ fontSize: "10px", color: "#a8a29e" }}>কোনো ক্রয় নেই</p> : (
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px" }}>
                 <thead>
                   <tr style={{ background: "#1c1917" }}>
-                    <th style={{ ...metPrintTh, color: "#fbbf24", borderRadius: "6px 0 0 0" }}>আইটেম</th>
-                    <th style={{ ...metPrintTh, color: "#fbbf24", textAlign: "right" }}>ওজন (কেজি)</th>
-                    <th style={{ ...metPrintTh, color: "#fbbf24", textAlign: "right", borderRadius: "0 6px 0 0" }}>টাকা</th>
+                    <th style={{ ...metPrintThCompact, color: "#fbbf24", borderRadius: "5px 0 0 0" }}>আইটেম</th>
+                    <th style={{ ...metPrintThCompact, color: "#fbbf24", textAlign: "right" }}>ওজন (কেজি)</th>
+                    <th style={{ ...metPrintThCompact, color: "#fbbf24", textAlign: "right", borderRadius: "0 5px 0 0" }}>টাকা</th>
                   </tr>
                 </thead>
                 <tbody>
                   {dayPurchases.map((p, i) => (
                     <tr key={p.id} style={i % 2 === 1 ? { background: "#fafaf9" } : undefined}>
-                      <td style={metPrintTd}>{productName(p.productId)}</td>
-                      <td style={{ ...metPrintTd, textAlign: "right" }}>{p.quantityKg}</td>
-                      <td style={{ ...metPrintTd, textAlign: "right", fontFamily: "'IBM Plex Mono',monospace" }}>{fmtTaka(p.amount)}</td>
+                      <td style={metPrintTdCompact}>{productName(p.productId)}</td>
+                      <td style={{ ...metPrintTdCompact, textAlign: "right" }}>{p.quantityKg}</td>
+                      <td style={{ ...metPrintTdCompact, textAlign: "right", fontFamily: "'IBM Plex Mono',monospace" }}>{fmtTaka(p.amount)}</td>
                     </tr>
                   ))}
                   <tr style={{ background: "#1c1917" }}>
-                    <td colSpan={2} style={{ padding: "9px 8px", color: "#fbbf24", fontWeight: 700, fontSize: "13px", borderRadius: "0 0 0 6px" }}>মোট</td>
-                    <td style={{ padding: "9px 8px", color: "#fbbf24", fontWeight: 700, fontSize: "13px", textAlign: "right", fontFamily: "'IBM Plex Mono',monospace", borderRadius: "0 0 6px 0" }}>{fmtTaka(dayPurchases.reduce((s, p) => s + Number(p.amount || 0), 0))}</td>
+                    <td colSpan={2} style={{ padding: "5px 6px", color: "#fbbf24", fontWeight: 700, fontSize: "11.5px", borderRadius: "0 0 0 5px" }}>মোট</td>
+                    <td style={{ padding: "5px 6px", color: "#fbbf24", fontWeight: 700, fontSize: "11.5px", textAlign: "right", fontFamily: "'IBM Plex Mono',monospace", borderRadius: "0 0 5px 0" }}>{fmtTaka(dayPurchases.reduce((s, p) => s + Number(p.amount || 0), 0))}</td>
                   </tr>
                 </tbody>
               </table>
             )}
           </div>
           <div>
-            <p style={{ fontSize: "11px", fontWeight: 700, color: "#0369a1", marginBottom: "4px" }}>💵 বিক্রয়</p>
-            {daySales.length === 0 ? <p style={{ fontSize: "11px", color: "#a8a29e" }}>কোনো বিক্রয় নেই</p> : (
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+            <p style={{ fontSize: "10px", fontWeight: 700, color: "#0369a1", marginBottom: "2px" }}>💵 বিক্রয়</p>
+            {daySales.length === 0 ? <p style={{ fontSize: "10px", color: "#a8a29e" }}>কোনো বিক্রয় নেই</p> : (
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px" }}>
                 <thead>
                   <tr style={{ background: "#1c1917" }}>
-                    <th style={{ ...metPrintTh, color: "#fbbf24", borderRadius: "6px 0 0 0" }}>আইটেম</th>
-                    <th style={{ ...metPrintTh, color: "#fbbf24", textAlign: "right" }}>ওজন (কেজি)</th>
-                    <th style={{ ...metPrintTh, color: "#fbbf24", textAlign: "right", borderRadius: "0 6px 0 0" }}>টাকা</th>
+                    <th style={{ ...metPrintThCompact, color: "#fbbf24", borderRadius: "5px 0 0 0" }}>আইটেম</th>
+                    <th style={{ ...metPrintThCompact, color: "#fbbf24", textAlign: "right" }}>ওজন (কেজি)</th>
+                    <th style={{ ...metPrintThCompact, color: "#fbbf24", textAlign: "right", borderRadius: "0 5px 0 0" }}>টাকা</th>
                   </tr>
                 </thead>
                 <tbody>
                   {daySales.map((s, i) => (
                     <tr key={s.id} style={i % 2 === 1 ? { background: "#fafaf9" } : undefined}>
-                      <td style={metPrintTd}>{productName(s.productId)}</td>
-                      <td style={{ ...metPrintTd, textAlign: "right" }}>{s.quantityKg}</td>
-                      <td style={{ ...metPrintTd, textAlign: "right", fontFamily: "'IBM Plex Mono',monospace" }}>{fmtTaka(s.amount)}</td>
+                      <td style={metPrintTdCompact}>{productName(s.productId)}</td>
+                      <td style={{ ...metPrintTdCompact, textAlign: "right" }}>{s.quantityKg}</td>
+                      <td style={{ ...metPrintTdCompact, textAlign: "right", fontFamily: "'IBM Plex Mono',monospace" }}>{fmtTaka(s.amount)}</td>
                     </tr>
                   ))}
                   <tr style={{ background: "#1c1917" }}>
-                    <td colSpan={2} style={{ padding: "9px 8px", color: "#fbbf24", fontWeight: 700, fontSize: "13px", borderRadius: "0 0 0 6px" }}>মোট</td>
-                    <td style={{ padding: "9px 8px", color: "#fbbf24", fontWeight: 700, fontSize: "13px", textAlign: "right", fontFamily: "'IBM Plex Mono',monospace", borderRadius: "0 0 6px 0" }}>{fmtTaka(daySales.reduce((s, r) => s + Number(r.amount || 0), 0))}</td>
+                    <td colSpan={2} style={{ padding: "5px 6px", color: "#fbbf24", fontWeight: 700, fontSize: "11.5px", borderRadius: "0 0 0 5px" }}>মোট</td>
+                    <td style={{ padding: "5px 6px", color: "#fbbf24", fontWeight: 700, fontSize: "11.5px", textAlign: "right", fontFamily: "'IBM Plex Mono',monospace", borderRadius: "0 0 5px 0" }}>{fmtTaka(daySales.reduce((s, r) => s + Number(r.amount || 0), 0))}</td>
                   </tr>
                 </tbody>
               </table>
@@ -15178,74 +15317,177 @@ function MetRetailDailyModule({ products, purchases, sales, onAdd, onAddProduct,
       </div>
 
       {/* আগে ক্রয়+বিক্রয় পাশাপাশি একই চওড়া টেবিলে ছিল, তাই মোবাইলে ডানপাশের ঘরগুলো (বিশেষ করে বিক্রয়) স্ক্রল
-          না করে দেখা যেত না। এখন ক্রয় আর বিক্রয় দুটো আলাদা, উপরে-নিচে সাজানো ছোট টেবিল — কোনো স্ক্রল লাগে না। */}
+          না করে দেখা যেত না। এখন ক্রয় আর বিক্রয় দুটো আলাদা, উপরে-নিচে সাজানো ছোট টেবিল — কোনো স্ক্রল লাগে না।
+          এখন এই দুটো টেবিলের উপরে ট্যাব বসানো হলো — শুধু নেভিগেশন (show/hide), টেবিল/হিসাব/সেভ কিছুই বদলায়নি। */}
+      <div className="flex gap-1.5">
+        <button
+          type="button"
+          onClick={() => setRetailTab("purchase")}
+          className={`flex-1 text-xs font-semibold py-2 rounded-lg transition-colors ${retailTab === "purchase" ? "bg-emerald-500 text-white" : "bg-stone-100 text-stone-500"}`}
+        >
+          🛒 ক্রয়
+        </button>
+        <button
+          type="button"
+          onClick={() => setRetailTab("sale")}
+          className={`flex-1 text-xs font-semibold py-2 rounded-lg transition-colors ${retailTab === "sale" ? "bg-sky-500 text-white" : "bg-stone-100 text-stone-500"}`}
+        >
+          💵 বিক্রয়
+        </button>
+      </div>
+
+      {retailTab === "purchase" && (
+      <>
       <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
-        <p className="px-3 pt-3 pb-1 text-xs font-bold text-emerald-700">🛒 ক্রয়</p>
+        <p className="px-3 pt-2 pb-1 text-xs font-bold text-emerald-700">🛒 ক্রয়</p>
         <table className="w-full text-xs">
           <thead>
             <tr className="bg-stone-50 border-b border-stone-200 text-stone-500">
-              <th className="text-left px-2 py-1.5 font-semibold">আইটেম</th>
-              <th className="px-1 py-1.5 font-semibold">ওজন (কেজি)</th>
-              <th className="px-1 py-1.5 font-semibold">টাকা</th>
+              <th className="text-left px-2 py-1 font-semibold">আইটেম</th>
+              <th className="px-1 py-1 font-semibold">ওজন (কেজি)</th>
+              <th className="px-1 py-1 font-semibold">টাকা</th>
             </tr>
           </thead>
           <tbody>
             {retailItems.map((p) => {
               const pw = Number(rows[p.id]?.purchaseWeight || 0);
               const pa = Number(rows[p.id]?.purchaseAmount || 0);
+              const item = effectiveItem(p);
               return (
-                <tr key={p.id} className="border-b border-stone-50">
-                  <td className="px-2 py-1.5 font-semibold text-stone-700 whitespace-nowrap">{p.name}</td>
-                  <td className="px-1 py-1"><input type="number" min="0" step="any" className="w-20 border border-stone-200 rounded px-1.5 py-1 text-right" value={rows[p.id]?.purchaseWeight || ""} onChange={(e) => setCell(p.id, "purchaseWeight", e.target.value)} /></td>
-                  <td className="px-1 py-1">
-                    <input type="number" min="0" step="any" className="w-20 border border-stone-200 rounded px-1.5 py-1 text-right" value={rows[p.id]?.purchaseAmount || ""} onChange={(e) => setCell(p.id, "purchaseAmount", e.target.value)} />
-                    {pw > 0 && pa > 0 && <p className="text-[10px] text-emerald-600 text-right mt-0.5">≈{fmtTaka(pa / pw)}/কেজি</p>}
+                <React.Fragment key={p.id}>
+                <tr className="border-b border-stone-50">
+                  <td className="px-2 py-0.5 font-semibold text-stone-700 whitespace-nowrap">
+                    <button type="button" onClick={() => setPickerRow(pickerRow === p.id ? null : p.id)} className="underline decoration-dotted underline-offset-2 hover:text-amber-700 text-left">
+                      {item.name}
+                    </button>
+                  </td>
+                  <td className="px-1 py-0.5"><input type="number" min="0" step="any" className="w-20 border border-stone-200 rounded px-1.5 py-0.5 text-right" value={rows[p.id]?.purchaseWeight || ""} onChange={(e) => setCell(p.id, "purchaseWeight", e.target.value)} /></td>
+                  <td className="px-1 py-0.5">
+                    <input type="number" min="0" step="any" className="w-20 border border-stone-200 rounded px-1.5 py-0.5 text-right" value={rows[p.id]?.purchaseAmount || ""} onChange={(e) => setCell(p.id, "purchaseAmount", e.target.value)} />
+                    {pw > 0 && pa > 0 && <p className="text-[10px] text-emerald-600 text-right mt-0">≈{fmtTaka(pa / pw)}/কেজি</p>}
                   </td>
                 </tr>
+                {pickerRow === p.id && (
+                  <tr className="bg-amber-50/60 border-b border-stone-50">
+                    <td colSpan={3} className="px-2 py-2">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1">
+                          <SearchableSelect
+                            value={rowOverrides[p.id] || p.id}
+                            onChange={(newId) => handleRowItemChange(p.id, newId)}
+                            options={activeMasterItems.map((it) => ({ value: it.id, label: it.name }))}
+                            placeholder="আইটেম মাস্টার থেকে বেছে নিন"
+                          />
+                        </div>
+                        <button type="button" onClick={() => setPickerRow(null)} className="text-[10px] font-semibold text-stone-500 hover:text-stone-700 whitespace-nowrap">বাতিল</button>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </React.Fragment>
               );
             })}
           </tbody>
           <tfoot>
             <tr className="bg-stone-50 font-bold">
-              <td className="px-2 py-1.5">মোট</td>
+              <td className="px-2 py-1">মোট</td>
               <td></td>
-              <td className="px-1 py-1 text-right text-emerald-700">{fmtTaka(totalPurchase)}</td>
+              <td className="px-1 py-0.5 text-right text-emerald-700">{fmtTaka(totalPurchase)}</td>
             </tr>
           </tfoot>
         </table>
       </div>
 
+      {/* বিক্রয় অংশে যেই Item Add সিস্টেম আছে (নিচে), সেই একই সিস্টেম (একই state/handler/Item Master) ক্রয়
+          অংশেও — যাতে ক্রয় করতে গিয়ে নিচে বিক্রয় টেবিল পার হয়ে যেতে না হয়। নতুন কোনো লজিক তৈরি হয়নি। */}
+      {!addingItem ? (
+        <button type="button" onClick={() => setAddingItem(true)} className="text-xs font-semibold text-amber-600 hover:text-amber-700 flex items-center gap-1">
+          <Plus size={14} /> শিটে আরেকটা আইটেম যোগ করুন
+        </button>
+      ) : (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
+          {nonRetailItems.length > 0 && (
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <SearchableSelect value={pickExisting} onChange={setPickExisting} options={nonRetailItems.map((p) => ({ value: p.id, label: p.name }))} placeholder="আইটেম মাস্টার থেকে বেছে নিন" />
+              </div>
+              <button type="button" onClick={addExistingToSheet} className="text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded px-2 py-1.5 whitespace-nowrap">যোগ করুন</button>
+            </div>
+          )}
+          <p className="text-[10px] text-stone-400 text-center">অথবা</p>
+          <div className="flex items-center gap-2">
+            <input
+              type="text" autoFocus={nonRetailItems.length === 0}
+              className="flex-1 border border-amber-300 rounded px-2 py-1.5 text-sm"
+              value={newItemName} onChange={(e) => setNewItemName(e.target.value)}
+              placeholder="নতুন আইটেমের নাম লিখুন"
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); createAndAddToSheet(); } }}
+            />
+            <button type="button" onClick={createAndAddToSheet} className="text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded px-2 py-1.5 whitespace-nowrap">নতুন তৈরি করুন</button>
+          </div>
+          <button type="button" onClick={() => { setAddingItem(false); setPickExisting(""); setNewItemName(""); }} className="text-xs font-semibold text-stone-500 hover:text-stone-700">বাতিল</button>
+        </div>
+      )}
+      </>
+      )}
+
+      {retailTab === "sale" && (
+      <>
       <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
-        <p className="px-3 pt-3 pb-1 text-xs font-bold text-sky-700">💵 বিক্রয়</p>
+        <p className="px-3 pt-2 pb-1 text-xs font-bold text-sky-700">💵 বিক্রয়</p>
         <table className="w-full text-xs">
           <thead>
             <tr className="bg-stone-50 border-b border-stone-200 text-stone-500">
-              <th className="text-left px-2 py-1.5 font-semibold">আইটেম</th>
-              <th className="px-1 py-1.5 font-semibold">ওজন (কেজি)</th>
-              <th className="px-1 py-1.5 font-semibold">টাকা</th>
+              <th className="text-left px-2 py-1 font-semibold">আইটেম</th>
+              <th className="px-1 py-1 font-semibold">ওজন (কেজি)</th>
+              <th className="px-1 py-1 font-semibold">টাকা</th>
             </tr>
           </thead>
           <tbody>
             {retailItems.map((p) => {
               const sw = Number(rows[p.id]?.saleWeight || 0);
               const sa = Number(rows[p.id]?.saleAmount || 0);
+              const item = effectiveItem(p);
               return (
-                <tr key={p.id} className="border-b border-stone-50">
-                  <td className="px-2 py-1.5 font-semibold text-stone-700 whitespace-nowrap">{p.name}</td>
-                  <td className="px-1 py-1"><input type="number" min="0" step="any" className="w-20 border border-stone-200 rounded px-1.5 py-1 text-right" value={rows[p.id]?.saleWeight || ""} onChange={(e) => setCell(p.id, "saleWeight", e.target.value)} /></td>
-                  <td className="px-1 py-1">
-                    <input type="number" min="0" step="any" className="w-20 border border-stone-200 rounded px-1.5 py-1 text-right" value={rows[p.id]?.saleAmount || ""} onChange={(e) => setCell(p.id, "saleAmount", e.target.value)} />
-                    {sw > 0 && sa > 0 && <p className="text-[10px] text-sky-600 text-right mt-0.5">≈{fmtTaka(sa / sw)}/কেজি</p>}
+                <React.Fragment key={p.id}>
+                <tr className="border-b border-stone-50">
+                  <td className="px-2 py-0.5 font-semibold text-stone-700 whitespace-nowrap">
+                    <button type="button" onClick={() => setPickerRow(pickerRow === p.id ? null : p.id)} className="underline decoration-dotted underline-offset-2 hover:text-sky-700 text-left">
+                      {item.name}
+                    </button>
+                  </td>
+                  <td className="px-1 py-0.5"><input type="number" min="0" step="any" className="w-20 border border-stone-200 rounded px-1.5 py-0.5 text-right" value={rows[p.id]?.saleWeight || ""} onChange={(e) => setCell(p.id, "saleWeight", e.target.value)} /></td>
+                  <td className="px-1 py-0.5">
+                    <input type="number" min="0" step="any" className="w-20 border border-stone-200 rounded px-1.5 py-0.5 text-right" value={rows[p.id]?.saleAmount || ""} onChange={(e) => setCell(p.id, "saleAmount", e.target.value)} />
+                    {sw > 0 && sa > 0 && <p className="text-[10px] text-sky-600 text-right mt-0">≈{fmtTaka(sa / sw)}/কেজি</p>}
                   </td>
                 </tr>
+                {pickerRow === p.id && (
+                  <tr className="bg-sky-50/60 border-b border-stone-50">
+                    <td colSpan={3} className="px-2 py-2">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1">
+                          <SearchableSelect
+                            value={rowOverrides[p.id] || p.id}
+                            onChange={(newId) => handleRowItemChange(p.id, newId)}
+                            options={activeMasterItems.map((it) => ({ value: it.id, label: it.name }))}
+                            placeholder="আইটেম মাস্টার থেকে বেছে নিন"
+                          />
+                        </div>
+                        <button type="button" onClick={() => setPickerRow(null)} className="text-[10px] font-semibold text-stone-500 hover:text-stone-700 whitespace-nowrap">বাতিল</button>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </React.Fragment>
               );
             })}
           </tbody>
           <tfoot>
             <tr className="bg-stone-50 font-bold">
-              <td className="px-2 py-1.5">মোট</td>
+              <td className="px-2 py-1">মোট</td>
               <td></td>
-              <td className="px-1 py-1 text-right text-sky-700">{fmtTaka(totalSale)}</td>
+              <td className="px-1 py-0.5 text-right text-sky-700">{fmtTaka(totalSale)}</td>
             </tr>
           </tfoot>
         </table>
@@ -15280,6 +15522,8 @@ function MetRetailDailyModule({ products, purchases, sales, onAdd, onAddProduct,
           </div>
           <button type="button" onClick={() => { setAddingItem(false); setPickExisting(""); setNewItemName(""); }} className="text-xs font-semibold text-stone-500 hover:text-stone-700">বাতিল</button>
         </div>
+      )}
+      </>
       )}
 
       <button
@@ -15624,6 +15868,68 @@ function MetCashClosingModule({ cashbankAccounts, cashbankTransactions, closings
     </MetLetterheadDoc>
   );
 
+  // মোবাইলে ডানদিকে কাটা না যাওয়ার জন্য — সহজ, ফুল-উইথ, রেসপনসিভ সামারি কার্ড (Tailwind flex, কোনো ফিক্সড
+  // mm-width না)। এটা শুধু স্ক্রিনে দেখানোর জন্য — একই existing ডেটা (openingCash/cashCollection/cashPayment/
+  // expectedCash) reuse করে, নতুন কোনো ফরমুলা তৈরি হয়নি।
+  const CashClosingSummaryCard = ({ data: d }) => (
+    <div className="bg-white rounded-xl border border-stone-200 p-4 space-y-2 text-sm w-full">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-stone-500">ওপেনিং ক্যাশ</span>
+        <span className="font-bold text-slate-700 text-right" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{fmtTaka(d.openingCash)}</span>
+      </div>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-stone-500">+ আজকের ক্যাশ ইন</span>
+        <span className="font-bold text-emerald-700 text-right" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>+{fmtTaka(d.cashCollection)}</span>
+      </div>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-stone-500">− আজকের ক্যাশ আউট</span>
+        <span className="font-bold text-rose-700 text-right" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>−{fmtTaka(d.cashPayment)}</span>
+      </div>
+      <div className="flex items-center justify-between gap-2 border-t border-stone-100 pt-2">
+        <span className="font-semibold text-slate-700">= এক্সপেক্টেড ক্লোজিং ক্যাশ</span>
+        <span className="font-bold text-amber-700 text-right" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{fmtTaka(d.expectedCash)}</span>
+      </div>
+    </div>
+  );
+
+  // "আজকের DKC লেনদেনের বিস্তারিত" — এটাও শুধু স্ক্রিনে দেখানোর জন্য, read-only। ডেটা হিসেবে existing
+  // `todayTxns` (উপরে, accountId+date দিয়ে আগে থেকেই ফিল্টার করা) reuse করা হয়েছে, আর টোটাল Cash In/Out-এর
+  // জন্যও existing cashCollection/cashPayment ভ্যালু (computed বা existingClosing থেকে) reuse করা হয়েছে —
+  // কোনো নতুন query/state/formula তৈরি হয়নি।
+  const TodayTxnDetailCard = ({ txns, totalIn, totalOut }) => (
+    <div className="bg-white rounded-xl border border-stone-200 p-4 w-full">
+      <h4 className="text-xs font-bold text-stone-400 uppercase tracking-wide mb-2">আজকের DKC লেনদেনের বিস্তারিত</h4>
+      {txns.length === 0 ? (
+        <p className="text-stone-400 text-sm">আজ এই অ্যাকাউন্টে কোনো লেনদেন নেই</p>
+      ) : (
+        <div className="space-y-1.5">
+          {txns.map((t) => (
+            <div key={t.id} className="flex items-center justify-between gap-2 text-sm border-b border-stone-50 pb-1.5 last:border-0">
+              <span className="text-slate-600 flex-1 min-w-0 break-words">{t.particulars || t.txnType}</span>
+              <span className="text-right whitespace-nowrap" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+                {Number(t.received || 0) > 0 ? (
+                  <span className="text-emerald-700 font-bold">+{fmtTaka(t.received)}</span>
+                ) : (
+                  <span className="text-rose-700 font-bold">−{fmtTaka(t.paid)}</span>
+                )}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      {txns.length > 0 && (
+        <div className="flex items-center justify-between gap-2 text-sm border-t border-stone-100 pt-2 mt-2">
+          <span className="font-semibold text-slate-700">মোট</span>
+          <span className="text-right whitespace-nowrap" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+            <span className="text-emerald-700 font-bold">+{fmtTaka(totalIn)}</span>
+            {" / "}
+            <span className="text-rose-700 font-bold">−{fmtTaka(totalOut)}</span>
+          </span>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-xl border border-stone-200 p-5 space-y-3">
@@ -15652,16 +15958,33 @@ function MetCashClosingModule({ cashbankAccounts, cashbankTransactions, closings
           {existingClosing ? (
             <div className="space-y-4">
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
-                এই অ্যাকাউন্টের {date} তারিখের ক্লোজিং ইতিমধ্যে জমা হয়েছে — ফিজিক্যাল ক্যাশ ছিল {fmtTaka(existingClosing.physicalCash)}, পার্থক্য {fmtTaka(Math.abs(existingClosing.difference))} {existingClosing.difference === 0 ? "(মিলে গেছে)" : existingClosing.difference > 0 ? "(বেশি)" : "(কম)"}
+                এই অ্যাকাউন্টের {date} তারিখের ক্লোজিং ইতিমধ্যে জমা হয়েছে
               </div>
-              <CashClosingPrintCard data={existingClosing} physical={existingClosing.physicalCash} closed />
+              <CashClosingSummaryCard data={existingClosing} />
+              <TodayTxnDetailCard txns={todayTxns} totalIn={existingClosing.cashCollection} totalOut={existingClosing.cashPayment} />
+              <div className="bg-white rounded-xl border border-stone-200 p-4 flex items-center justify-between gap-2">
+                <span className="text-sm text-stone-500">হাতে গোনা ক্যাশ (৳)</span>
+                <span className="text-sm font-bold text-slate-700" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{fmtTaka(existingClosing.physicalCash)}</span>
+              </div>
+              <div className={`rounded-lg px-3 py-2 text-sm font-bold ${existingClosing.difference === 0 ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-rose-50 text-rose-700 border border-rose-200"}`}>
+                {existingClosing.difference === 0 ? "✅ মিলেছে" : existingClosing.difference > 0 ? `বেশি ৳${fmtTaka(existingClosing.difference)}` : `কম ৳${fmtTaka(Math.abs(existingClosing.difference))}`}
+              </div>
+              {/* PDF শেয়ার/ডাউনলোডের জন্য পুরনো প্রিন্ট-স্টাইল কার্ডটা DOM-এ রাখা হয়েছে (html2canvas-এর জন্য দরকার),
+                  কিন্তু স্ক্রিনের বাইরে সরিয়ে রাখা — যাতে মোবাইলে দেখা কার্ডটা কাটা না যায়। */}
+              <div style={{ position: "fixed", left: "-9999px", top: 0 }} aria-hidden="true">
+                <CashClosingPrintCard data={existingClosing} physical={existingClosing.physicalCash} closed />
+              </div>
               <button onClick={() => generateAndSharePdf("met-cashclosing-print", `cash-closing-${date}.pdf`, setPdfStatus)} className="w-full bg-slate-700 hover:bg-slate-800 text-white font-semibold rounded-lg py-2.5">
                 {pdfStatus || "🖨️ শেয়ার / PDF ডাউনলোড করুন"}
               </button>
             </div>
           ) : (
             <>
-              <CashClosingPrintCard data={computed} physical={physicalCash !== "" ? Number(physicalCash) : null} closed={physicalCash !== ""} />
+              <CashClosingSummaryCard data={computed} />
+              <TodayTxnDetailCard txns={todayTxns} totalIn={computed.cashCollection} totalOut={computed.cashPayment} />
+              <div style={{ position: "fixed", left: "-9999px", top: 0 }} aria-hidden="true">
+                <CashClosingPrintCard data={computed} physical={physicalCash !== "" ? Number(physicalCash) : null} closed={physicalCash !== ""} />
+              </div>
               {physicalCash !== "" && (
                 <button onClick={() => generateAndSharePdf("met-cashclosing-print", `cash-closing-${date}.pdf`, setPdfStatus)} className="w-full bg-slate-700 hover:bg-slate-800 text-white font-semibold rounded-lg py-2.5">
                   {pdfStatus || "🖨️ শেয়ার / PDF ডাউনলোড করুন"}
@@ -15674,7 +15997,7 @@ function MetCashClosingModule({ cashbankAccounts, cashbankTransactions, closings
                 </Field>
                 {difference != null && (
                   <div className={`rounded-lg px-3 py-2 text-sm font-bold ${difference === 0 ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-rose-50 text-rose-700 border border-rose-200"}`}>
-                    {difference === 0 ? "✅ মিলে গেছে (Balanced)" : difference > 0 ? `বেশি (Excess): ${fmtTaka(difference)}` : `কম (Shortage): ${fmtTaka(Math.abs(difference))}`}
+                    {difference === 0 ? "✅ মিলেছে" : difference > 0 ? `বেশি ৳${fmtTaka(difference)}` : `কম ৳${fmtTaka(Math.abs(difference))}`}
                   </div>
                 )}
                 <Field label="নোট (ঐচ্ছিক)">
@@ -15719,6 +16042,10 @@ function MetOwnerDashboardModule({ purchases, sales, supplierLedger, customerLed
 
   const todayPurchase = sumAmtLocal(purchases, today, today);
   const todaySales = sumAmtLocal(sales, today, today);
+  const sumKgLocal = (list, from, to) =>
+    (list || []).filter((r) => (!from || r.date >= from) && (!to || r.date <= to)).reduce((s, r) => s + Number(r.quantityKg || 0), 0);
+  const todayPurchaseKg = sumKgLocal(purchases, today, today);
+  const todaySalesKg = sumKgLocal(sales, today, today);
   const todayExpense = sumAmtLocal(expenses, today, today);
   const monthPurchase = sumAmtLocal(purchases, monthStart, today);
   const monthSales = sumAmtLocal(sales, monthStart, today);
@@ -15777,9 +16104,14 @@ function MetOwnerDashboardModule({ purchases, sales, supplierLedger, customerLed
   const stockRows = activeProducts.map((p) => {
     const purchasedKg = (purchases || []).filter((x) => x.productId === p.id).reduce((s, x) => s + Number(x.quantityKg || 0), 0);
     const soldKg = (sales || []).filter((x) => x.productId === p.id).reduce((s, x) => s + Number(x.quantityKg || 0), 0);
-    return { ...p, closingKg: Number(p.openingStockKg || 0) + purchasedKg - soldKg };
+    const closingKg = Number(p.openingStockKg || 0) + purchasedKg - soldKg;
+    // সাম্প্রতিক ক্রয়-রেট দিয়ে আনুমানিক স্টক ভ্যালু — MetStockModule-এর একই পদ্ধতি (শেষ পার্চেজ এন্ট্রির রেট)
+    const lastPurchase = (purchases || []).filter((x) => x.productId === p.id).sort((a, b) => (a.date === b.date ? String(b.createdAt || "").localeCompare(String(a.createdAt || "")) : b.date.localeCompare(a.date)))[0];
+    const estValue = lastPurchase ? closingKg * Number(lastPurchase.ratePerKg || 0) : null;
+    return { ...p, closingKg, estValue };
   });
   const totalStockKg = stockRows.reduce((s, r) => s + r.closingKg, 0);
+  const totalStockValue = stockRows.reduce((s, r) => s + (r.estValue || 0), 0);
   const topStock = [...stockRows].sort((a, b) => b.closingKg - a.closingKg).slice(0, 5);
 
   const todayItemPurchase = (purchases || [])
@@ -15863,6 +16195,7 @@ function MetOwnerDashboardModule({ purchases, sales, supplierLedger, customerLed
 
   const alerts = [];
   if (totalOverdueReceivable > 0) alerts.push({ text: `কাস্টমার ওভারডিউ পাওনা: ${fmtTaka(totalOverdueReceivable)}`, nav: "metcustomerledger" });
+  if (totalPayable > 0) alerts.push({ text: `সাপ্লায়ার পাওনা (দেনা): ${fmtTaka(totalPayable)}`, nav: "metsupplierledger" });
   if (totalLongPendingAdvance > 0) alerts.push({ text: `সাপ্লায়ার অগ্রিম দীর্ঘদিন সমন্বয় হয়নি: ${fmtTaka(totalLongPendingAdvance)}`, nav: "metsupplierledger" });
   if (aggDifference != null && aggDifference !== 0) alerts.push({ text: `ক্যাশ ক্লোজিং ${aggDifference < 0 ? "শর্টেজ" : "এক্সেস"}: ${fmtTaka(Math.abs(aggDifference))}`, nav: "metcashclosing" });
   lowStockItems.forEach((p) => alerts.push({ text: `${p.name} স্টক কম (${p.closingKg} কেজি, মিনিমাম ${p.minStockKg} কেজি)`, nav: "metstock" }));
@@ -15961,8 +16294,8 @@ function MetOwnerDashboardModule({ purchases, sales, supplierLedger, customerLed
       <div>
         <h3 className="text-xs font-bold text-stone-400 uppercase tracking-wide mb-2">আজকের সারসংক্ষেপ</h3>
         <div className="grid grid-cols-2 gap-3">
-          <Card label="আজকের ক্রয়" value={todayPurchase} tone="bg-rose-50 border-rose-200 text-rose-800" />
-          <Card label="আজকের বিক্রয়" value={todaySales} tone="bg-emerald-50 border-emerald-200 text-emerald-800" />
+          <Card label="আজকের ক্রয়" value={todayPurchase} sub={`${todayPurchaseKg.toLocaleString("en-US")} KG`} tone="bg-rose-50 border-rose-200 text-rose-800" />
+          <Card label="আজকের বিক্রয়" value={todaySales} sub={`${todaySalesKg.toLocaleString("en-US")} KG`} tone="bg-emerald-50 border-emerald-200 text-emerald-800" />
           <Card label="আজকের খরচ" value={todayExpense} tone="bg-stone-50 border-stone-200 text-stone-700" />
           <Card label="আজকের আনুমানিক নিট মুনাফা" value={todayNet} tone={todayNet >= 0 ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-rose-50 border-rose-200 text-rose-800"} />
         </div>
@@ -16028,6 +16361,17 @@ function MetOwnerDashboardModule({ purchases, sales, supplierLedger, customerLed
             <p className="text-sm font-bold text-stone-700" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{fmtTaka(totalAdvanceHeld)}</p>
           </div>
         )}
+      </div>
+
+      {/* বর্তমান নেট অবস্থান = ক্যাশ+ব্যাংক + কাস্টমার পাওনা + আনুমানিক স্টক মূল্য − সাপ্লায়ার পাওনা —
+          এই ড্যাশবোর্ডেই আগে থেকে হিসাব করা existing ভ্যালুগুলো (totalCash, totalBank, totalReceivable,
+          totalStockValue, totalPayable) reuse করা হয়েছে, নতুন কোনো লজিক তৈরি হয়নি। */}
+      <div className="bg-slate-800 rounded-xl p-4">
+        <p className="text-[11px] font-semibold text-slate-300 uppercase tracking-wide mb-1">বর্তমান নেট অবস্থান</p>
+        <p className="text-xl font-bold text-white" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+          {fmtTaka(Math.round(totalCash + totalBank + totalReceivable + totalStockValue - totalPayable))}
+        </p>
+        <p className="text-[10px] text-slate-400 mt-1">ক্যাশ + ব্যাংক + কাস্টমার পাওনা + আনুমানিক স্টক মূল্য − সাপ্লায়ার পাওনা</p>
       </div>
 
       {topSuppliers.length > 0 && (
@@ -16101,6 +16445,12 @@ function MetOwnerDashboardModule({ purchases, sales, supplierLedger, customerLed
             </div>
           ))}
         </div>
+        {totalStockValue > 0 && (
+          <div className="mt-2 pt-2 border-t border-stone-100 flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-emerald-800">আনুমানিক স্টক মূল্য (৳)</span>
+            <span className="text-sm font-bold text-emerald-800" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{fmtTaka(totalStockValue)}</span>
+          </div>
+        )}
       </div>
 
       <p className="text-[10px] text-stone-400 text-center">অস্বাভাবিক লেনদেন বা গভীর বিশ্লেষণের জন্য "AI অ্যাসিস্ট্যান্ট" ট্যাব ব্যবহার করুন — এখানে শুধু সংখ্যার সারাংশ</p>
