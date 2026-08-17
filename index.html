@@ -9867,10 +9867,10 @@ function App() {
                 <MillRateModule rates={data.wpRates} mills={data.wpPaperMills} products={data.wpProducts} onAddRate={addMillRateEntry} onAddRateBatch={addMillRateBatch} />
               )}
               {activeModule === "wpmillledger" && (
-                <MillLedgerModule ledger={data.wpMillLedger} mills={data.wpPaperMills} suppliers={data.wpSuppliers} onAddManual={addWpMillLedgerEntry} accounts={data.wpCashbankAccounts} division="wp" />
+                <MillLedgerModule ledger={data.wpMillLedger} mills={data.wpPaperMills} suppliers={data.wpSuppliers} onAddManual={addWpMillLedgerEntry} accounts={data.wpCashbankAccounts} division="wp" challans={data.wpChallans} />
               )}
               {activeModule === "wpsupplierledger" && (
-                <SupplierLedgerModule ledger={data.wpSupplierLedger} suppliers={data.wpSuppliers} onAddManual={addWpSupplierLedgerEntry} accounts={data.wpCashbankAccounts} division="wp" initialSupplierId={wpPresetSupplierId} restrictAccountId={profile?.role === "mill_incharge" ? profile?.assignedCashbankAccountId : null} />
+                <SupplierLedgerModule ledger={data.wpSupplierLedger} suppliers={data.wpSuppliers} onAddManual={addWpSupplierLedgerEntry} accounts={data.wpCashbankAccounts} division="wp" initialSupplierId={wpPresetSupplierId} restrictAccountId={profile?.role === "mill_incharge" ? profile?.assignedCashbankAccountId : null} challans={data.wpChallans} mills={data.wpPaperMills} />
               )}
               {activeModule === "wpcustomerledger" && (
                 <CustomerLedgerModule ledger={data.wpCustomerLedger} customers={data.wpCustomers} onAddManual={addWpCustomerLedgerEntry} accounts={data.wpCashbankAccounts} division="wp" initialCustomerId={wpPresetCustomerId} />
@@ -12621,7 +12621,7 @@ function groupLedgerRows(list) {
   return groups;
 }
 
-function MillLedgerModule({ ledger, mills, suppliers, onAddManual, accounts, division }) {
+function MillLedgerModule({ ledger, mills, suppliers, onAddManual, accounts, division, challans = [] }) {
   const [millId, setMillId] = useState("");
   const [form, setForm] = useState({ entryType: "deposit", date: todayStr(), particulars: "", referenceNo: "", quantityKg: "", rate: "", debit: "", credit: "", note: "", accountId: "" });
   const selectedMill = (mills || []).find((m) => m.id === millId);
@@ -12644,6 +12644,37 @@ function MillLedgerModule({ ledger, mills, suppliers, onAddManual, accounts, div
   });
   const currentBalance = withBalance.length ? withBalance[withBalance.length - 1].runningBalance : Number(selectedMill?.openingBalance || 0);
   const displayList = [...withBalance].reverse();
+
+  // Mobile ledger description standard (display-only):
+  // Challan No → Weight × Rate; short operational labels for charges/payments.
+  // Stored particulars, debit/credit, balances and database rows remain untouched.
+  const compactMillParticulars = (e) => {
+    const ch = (challans || []).find((c) => c.id === e.challanId);
+    const challanNo = ch?.challanNo || e.referenceNo || "";
+    const p = String(e.particulars || millLedgerTypeLabel(e.entryType) || "").trim();
+    const qty = Number(e.quantityKg || 0);
+    const rate = Number(e.rate || 0);
+    const weightRate = qty > 0 ? `${qty.toLocaleString("en-US", { maximumFractionDigits: 2 })}kg${rate > 0 ? ` × ${fmtTaka(rate)}` : ""}` : "";
+
+    if (["wp", "mp", "supplier_material"].includes(e.entryType) || qty > 0) {
+      return [challanNo, weightRate || p].filter(Boolean).join(" · ");
+    }
+    if (e.entryType === "scaling_charge" || /স্কেলিং|scaling/i.test(p)) {
+      return ["স্কেলিং", challanNo].filter(Boolean).join(" · ");
+    }
+    if (/নিজস্ব পিকআপ|pickup/i.test(p)) {
+      return ["নিজস্ব পিকআপ", challanNo].filter(Boolean).join(" · ");
+    }
+    if (e.entryType === "deposit" || /payment received|ডিপোজিট|জমা/i.test(p)) {
+      return ["নগদ পেমেন্ট", challanNo].filter(Boolean).join(" · ");
+    }
+    const shortLabel = p
+      .replace(/স্কেলিং চার্জ/gi, "স্কেলিং")
+      .replace(/\s*[—·]\s*(?:S\.?A\.? Pulp|Asia Pacific|PHP|Bayzid|Mustafa|T\.?K\.?|Hakkani)[^·—]*/gi, "")
+      .trim();
+    return [shortLabel || millLedgerTypeLabel(e.entryType), challanNo].filter(Boolean).join(" · ");
+  };
+
   const [showLedgerPdf, setShowLedgerPdf] = useState(false);
 
   const submit = (e) => {
@@ -12772,7 +12803,7 @@ function MillLedgerModule({ ledger, mills, suppliers, onAddManual, accounts, div
                       return (
                         <tr key={e.id} className="bg-white align-top">
                           <td className="border px-0.5 py-1.5 whitespace-nowrap leading-tight text-[9px] sm:text-xs text-stone-500">{shortDate}</td>
-                          <td className="border px-1 py-1.5 leading-[1.18] break-words whitespace-normal text-[9px] sm:text-xs">{e.particulars || millLedgerTypeLabel(e.entryType)}{e.quantityKg ? ` — ${e.quantityKg} কেজি × ${fmtTaka(e.rate)}` : ""}</td>
+                          <td className="border px-1 py-1.5 leading-[1.18] break-words whitespace-normal text-[9px] sm:text-xs">{compactMillParticulars(e)}</td>
                           <td className="border px-0.5 py-1.5 text-right font-mono whitespace-nowrap leading-tight text-[8px] sm:text-xs tracking-[-0.03em]">{Number(e.debit) > 0 ? fmtTaka(e.debit) : "—"}</td>
                           <td className="border px-0.5 py-1.5 text-right font-mono whitespace-nowrap leading-tight text-[8px] sm:text-xs tracking-[-0.03em]">{Number(e.credit) > 0 ? fmtTaka(e.credit) : "—"}</td>
                           <td className="border px-0.5 py-1.5 text-right font-bold whitespace-nowrap leading-tight text-[8px] sm:text-xs"><span>{fmtTaka(Math.abs(e.runningBalance))}</span><span className="ml-0.5">{e.runningBalance >= 0 ? "CR" : "DR"}</span></td>
@@ -12836,7 +12867,7 @@ const customerLedgerEntryTypes = [
 ];
 const customerLedgerTypeLabel = (t) => customerLedgerEntryTypes.find((x) => x.value === t)?.label || t;
 
-function SupplierLedgerModule({ ledger, suppliers, onAddManual, accounts, division, initialSupplierId, restrictAccountId }) {
+function SupplierLedgerModule({ ledger, suppliers, onAddManual, accounts, division, initialSupplierId, restrictAccountId, challans = [], mills = [] }) {
   const [supplierId, setSupplierId] = useState(initialSupplierId || "");
   const [supplierSearch, setSupplierSearch] = useState("");
   // Windows Avro/Bijoy-compatible phonetic IME বাংলা যুক্তাক্ষর বানানোর সময় কয়েক ধাপে text composition করে।
@@ -12868,6 +12899,47 @@ function SupplierLedgerModule({ ledger, suppliers, onAddManual, accounts, divisi
   });
   const currentBalance = withBalance.length ? withBalance[withBalance.length - 1].runningBalance : Number(selectedSupplier?.openingBalance || 0);
   const displayList = [...withBalance].reverse();
+
+  // Mobile Excel-style compact description: Mill short name → Challan → Weight × Rate.
+  // This is display-only; stored ledger rows, debit/credit, balances and database logic remain untouched.
+  const millShortName = (mill) => {
+    // Database short_code is the source of truth for ledger display.
+    // Never use the legacy/internal `code` field (e.g. MIL-000x / old MO).
+    const configured = String(mill?.shortCode || "").trim();
+    if (configured) return configured.toUpperCase().slice(0, 5);
+    const name = String(mill?.name || "").trim();
+    const n = name.toLowerCase();
+    if (n.includes("sa pulp") || n.includes("s.a") || n.includes("s a pulp")) return "SA";
+    if (n.includes("asia pacific")) return "APP";
+    if (n.includes("php")) return "PHP";
+    if (n.includes("bayzid")) return "BAY";
+    if (n.includes("mostafa") || n.includes("mustafa") || n.includes("sakin")) return "SAK";
+    if (n.includes("tanvir") || n.includes("তানভীর")) return "THA";
+    if (n.includes("bismillah") || n.includes("বিসমিল্লাহ")) return "BHA";
+    if (n === "tk" || n.includes("tk ") || n.includes("t.k")) return "TK";
+    const words = name.replace(/[^A-Za-z0-9 ]+/g, " ").split(/\s+/).filter(Boolean);
+    return (words.length > 1 ? words.map(w => w[0]).join("") : (words[0] || name)).toUpperCase().slice(0, 5) || "MILL";
+  };
+  const compactSupplierParticulars = (e) => {
+    const ch = (challans || []).find((c) => c.id === e.challanId);
+    if (!ch) return e.particulars || supplierLedgerTypeLabel(e.entryType);
+    const mill = (mills || []).find((m) => m.id === ch.millId);
+    // Challan numbers already carry the mill identity (APP-/SA-/PHP-/etc.).
+    // Keep the ledger description shortest on mobile and avoid duplicate prefixes like APP · APP-32735.
+    const challanRef = String(ch.challanNo || "").trim();
+    const millCode = mill ? millShortName(mill) : "";
+    const prefix = challanRef || millCode;
+    const p = String(e.particulars || supplierLedgerTypeLabel(e.entryType) || "").trim();
+    const kgMatches = [...p.matchAll(/([\d,.]+)\s*(?:কেজি|kg)/gi)];
+    const totalKg = kgMatches.reduce((sum, m) => sum + Number(String(m[1]).replace(/,/g, "") || 0), 0);
+    const amount = Math.max(Number(e.credit || 0), Number(e.debit || 0));
+    const inferredRate = totalKg > 0 && amount > 0 ? amount / totalKg : 0;
+    const weightRate = totalKg > 0 ? `${Number(totalKg).toLocaleString("en-US", { maximumFractionDigits: 2 })}kg${inferredRate > 0 ? ` × ${fmtTaka(inferredRate)}` : ""}` : "";
+    const isMaterial = ["material", "supplier_material"].includes(e.entryType) || totalKg > 0;
+    if (isMaterial) return [prefix, weightRate || p].filter(Boolean).join(" · ");
+    const expenseName = p.split(/\s*[—·]\s*/)[0].replace(/\s*\(.*$/, "").trim();
+    return [expenseName, prefix].filter(Boolean).join(" · ");
+  };
 
   // রিপোর্ট শেয়ার করার জন্য — তারিখ রেঞ্জ ফাঁকা রাখলে পুরো লেজার, নাহলে শুধু ওই রেঞ্জের এন্ট্রি + Previous Balance
   const reportRows = withBalance.filter((e) => (!fromDate || e.date >= fromDate) && (!toDate || e.date <= toDate));
@@ -13070,7 +13142,7 @@ function SupplierLedgerModule({ ledger, suppliers, onAddManual, accounts, divisi
                     {displayList.map((e) => (
                       <tr key={e.id} className="bg-white">
                         <td className="border border-stone-300 px-0.5 py-1.5 align-top text-stone-500 whitespace-nowrap text-[9px] sm:text-xs">{e.date ? `${e.date.slice(8, 10)}/${e.date.slice(5, 7)}/${e.date.slice(2, 4)}` : "—"}</td>
-                        <td className="border border-stone-300 px-1 py-1.5 align-top text-slate-700 break-words whitespace-normal leading-[1.18] text-[9px] sm:text-xs">{e.particulars || supplierLedgerTypeLabel(e.entryType)}{e.quantityKg ? ` — ${e.quantityKg} কেজি × ${fmtTaka(e.rate)}` : ""}</td>
+                        <td className="border border-stone-300 px-1 py-1.5 align-top text-slate-700 break-words whitespace-normal leading-[1.18] text-[9px] sm:text-xs">{compactSupplierParticulars(e)}</td>
                         <td className="border border-stone-300 px-0.5 py-1.5 text-right align-top font-mono whitespace-nowrap text-[8px] sm:text-xs tracking-[-0.03em]">{Number(e.debit) > 0 ? fmtTaka(e.debit) : "—"}</td>
                         <td className="border border-stone-300 px-0.5 py-1.5 text-right align-top font-mono whitespace-nowrap text-[8px] sm:text-xs tracking-[-0.03em]">{Number(e.credit) > 0 ? fmtTaka(e.credit) : "—"}</td>
                         <td className="border border-stone-300 px-0.5 py-1.5 text-right align-top font-bold whitespace-nowrap text-[8px] sm:text-xs leading-tight tracking-[-0.04em]">{fmtTaka(Math.abs(e.runningBalance))} {e.runningBalance >= 0 ? "CR" : "DR"}</td>
